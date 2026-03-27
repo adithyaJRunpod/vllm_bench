@@ -1,0 +1,7 @@
+name,max_concurrency
+c08,8
+c16,16
+c24,24
+c32,32
+c48,48
+c64,64
