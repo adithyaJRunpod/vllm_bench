@@ -6,19 +6,18 @@ set -euo pipefail
 # Assumes the vLLM server is already running
 ############################################
 
-MODEL="Qwen/Qwen3-8B"
+MODEL="${VLLM_MODEL:?Set VLLM_MODEL before running (e.g. export VLLM_MODEL=Qwen/Qwen3-8B)}"
 BASE_URL="http://127.0.0.1:8000"
 API_KEY="${VLLM_API_KEY:-}"
 
-REQUEST_RATE=30
+REQUEST_RATE="${VLLM_REQUEST_RATE:?Set VLLM_REQUEST_RATE (e.g. export VLLM_REQUEST_RATE=30)}"
+INPUT_LEN="${VLLM_INPUT_LEN:?Set VLLM_INPUT_LEN (e.g. export VLLM_INPUT_LEN=128)}"
+OUTPUT_LEN="${VLLM_OUTPUT_LEN:?Set VLLM_OUTPUT_LEN (e.g. export VLLM_OUTPUT_LEN=128)}"
 NUM_PROMPTS=1024
-INPUT_LEN=128
-OUTPUT_LEN=128
-TEMPERATURE=0
 
 CONCURRENCY_VALUES=(4 8 16 24 32 48 64 96 128 150 180 200 256)
 
-OUTDIR="logs/concurrency_sweep_$(date +%F_%H%M%S)"
+OUTDIR="logs/concurrency_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
 
 TOTAL=${#CONCURRENCY_VALUES[@]}
@@ -44,7 +43,6 @@ for c in "${CONCURRENCY_VALUES[@]}"; do
     --num-prompts "$NUM_PROMPTS"
     --max-concurrency "$c"
     --request-rate "$REQUEST_RATE"
-    --temperature "$TEMPERATURE"
     --percentile-metrics ttft,itl,e2el
     --metric-percentiles 50,90,99
   )

@@ -1,9 +1,28 @@
 import csv
 import re
+import sys
 from pathlib import Path
 
 log_root = Path("logs")
-latest = sorted([p for p in log_root.iterdir() if p.is_dir() and p.name.startswith("concurrency_sweep_")])[-1]
+sweep_type = sys.argv[1] if len(sys.argv) > 1 else None
+
+if sweep_type not in ("rps", "concurrency"):
+    for candidate in ("rps_sweep", "concurrency_sweep"):
+        candidate_dir = log_root / candidate
+        if candidate_dir.is_dir() and any(candidate_dir.iterdir()):
+            sweep_type = "rps" if candidate == "rps_sweep" else "concurrency"
+    if sweep_type is None:
+        print("Usage: python3 parse_bench_logs.py [rps|concurrency]")
+        print("No sweep results found in logs/")
+        sys.exit(1)
+
+sweep_dir = log_root / ("rps_sweep" if sweep_type == "rps" else "concurrency_sweep")
+runs = sorted([p for p in sweep_dir.iterdir() if p.is_dir()])
+if not runs:
+    print(f"No runs found in {sweep_dir}/")
+    sys.exit(1)
+
+latest = runs[-1]
 
 patterns = {
     "failed_requests": r"Failed requests:\s+([0-9]+)",
@@ -22,7 +41,13 @@ for bench_file in sorted(latest.glob("*_bench.log")):
     text = bench_file.read_text(errors="ignore")
     experiment = bench_file.name.replace("_bench.log", "")
     row = {"experiment": experiment}
-    row["max_concurrency"] = int(experiment.replace("c", ""))
+
+    if sweep_type == "rps":
+        row["request_rate"] = int(experiment.replace("rps", ""))
+        sort_key = "request_rate"
+    else:
+        row["max_concurrency"] = int(experiment.replace("c", ""))
+        sort_key = "max_concurrency"
 
     for key, pattern in patterns.items():
         m = re.search(pattern, text)
@@ -30,10 +55,10 @@ for bench_file in sorted(latest.glob("*_bench.log")):
 
     rows.append(row)
 
-rows = sorted(rows, key=lambda x: x["max_concurrency"])
+rows = sorted(rows, key=lambda x: x[sort_key])
 
-results_dir = Path("results")
-results_dir.mkdir(exist_ok=True)
+results_dir = Path("results") / sweep_dir.name
+results_dir.mkdir(parents=True, exist_ok=True)
 out_file = results_dir / f"{latest.name}.csv"
 
 with out_file.open("w", newline="") as f:
