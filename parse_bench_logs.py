@@ -6,17 +6,17 @@ from pathlib import Path
 log_root = Path("logs")
 sweep_type = sys.argv[1] if len(sys.argv) > 1 else None
 
-if sweep_type not in ("rps", "concurrency"):
-    for candidate in ("rps_sweep", "concurrency_sweep"):
+if sweep_type not in ("rps", "concurrency", "tuning"):
+    for candidate in ("tuning_sweep", "rps_sweep", "concurrency_sweep"):
         candidate_dir = log_root / candidate
         if candidate_dir.is_dir() and any(candidate_dir.iterdir()):
-            sweep_type = "rps" if candidate == "rps_sweep" else "concurrency"
+            sweep_type = candidate.replace("_sweep", "")
     if sweep_type is None:
-        print("Usage: python3 parse_bench_logs.py [rps|concurrency]")
+        print("Usage: python3 parse_bench_logs.py [rps|concurrency|tuning]")
         print("No sweep results found in logs/")
         sys.exit(1)
 
-sweep_dir = log_root / ("rps_sweep" if sweep_type == "rps" else "concurrency_sweep")
+sweep_dir = log_root / f"{sweep_type}_sweep"
 runs = sorted([p for p in sweep_dir.iterdir() if p.is_dir()])
 if not runs:
     print(f"No runs found in {sweep_dir}/")
@@ -45,9 +45,12 @@ for bench_file in sorted(latest.glob("*_bench.log")):
     if sweep_type == "rps":
         row["request_rate"] = int(experiment.replace("rps", ""))
         sort_key = "request_rate"
-    else:
+    elif sweep_type == "concurrency":
         row["max_concurrency"] = int(experiment.replace("c", ""))
         sort_key = "max_concurrency"
+    else:
+        row["config"] = experiment
+        sort_key = None
 
     for key, pattern in patterns.items():
         m = re.search(pattern, text)
@@ -55,7 +58,8 @@ for bench_file in sorted(latest.glob("*_bench.log")):
 
     rows.append(row)
 
-rows = sorted(rows, key=lambda x: x[sort_key])
+if sort_key:
+    rows = sorted(rows, key=lambda x: x[sort_key])
 
 results_dir = Path("results") / sweep_dir.name
 results_dir.mkdir(parents=True, exist_ok=True)
