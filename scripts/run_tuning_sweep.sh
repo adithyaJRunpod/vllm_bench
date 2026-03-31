@@ -27,15 +27,16 @@ COMMON_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization
 declare -A CONFIGS
 CONFIGS=(
   [baseline]="--enforce-eager"
-  [cuda-graphs]=""
-  [no-chunked-prefill]="--enforce-eager --no-enable-chunked-prefill"
-  [prefix-caching]="--enforce-eager --enable-prefix-caching"
-  [max-seqs-64]="--enforce-eager --max-num-seqs 64"
-  [max-seqs-256]="--enforce-eager --max-num-seqs 256"
-  [max-seqs-512]="--enforce-eager --max-num-seqs 512"
+  [prefix-caching]="--enable-prefix-caching"
+  [max-seqs-64]="--max-num-seqs 64"
+  [max-seqs-256]="--max-num-seqs 256"
+  [max-seqs-512]="--max-num-seqs 512"
+  [kv-cache-fp8]="--kv-cache-dtype fp8"
+  [batched-tokens-4096]="--max-num-batched-tokens 4096"
+  [batched-tokens-8192]="--max-num-batched-tokens 8192"
 )
 
-CONFIG_ORDER=(baseline cuda-graphs)
+CONFIG_ORDER=(baseline prefix-caching max-seqs-64 max-seqs-256 max-seqs-512 kv-cache-fp8 batched-tokens-4096 batched-tokens-8192)
 
 OUTDIR="logs/tuning_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
