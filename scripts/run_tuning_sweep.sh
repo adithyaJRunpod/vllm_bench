@@ -27,13 +27,13 @@ COMMON_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization
 declare -A CONFIGS
 CONFIGS=(
   [baseline]="--enforce-eager"
-  [prefix-caching]="--enforce-eager --enable-prefix-caching"
-  [max-seqs-64]="--enforce-eager --max-num-seqs 64"
-  [max-seqs-256]="--enforce-eager --max-num-seqs 256"
-  [max-seqs-512]="--enforce-eager --max-num-seqs 512"
-  [kv-cache-fp8]="--enforce-eager --kv-cache-dtype fp8"
-  [batched-tokens-4096]="--enforce-eager --max-num-batched-tokens 4096"
-  [batched-tokens-8192]="--enforce-eager --max-num-batched-tokens 8192"
+  [prefix-caching]="--enable-prefix-caching"
+  [max-seqs-64]="--max-num-seqs 64"
+  [max-seqs-256]="--max-num-seqs 256"
+  [max-seqs-512]="--max-num-seqs 512"
+  [kv-cache-fp8]="--kv-cache-dtype fp8"
+  [batched-tokens-4096]="--max-num-batched-tokens 4096"
+  [batched-tokens-8192]="--max-num-batched-tokens 8192"
 )
 
 CONFIG_ORDER=(baseline prefix-caching max-seqs-64 max-seqs-256 max-seqs-512 kv-cache-fp8 batched-tokens-4096 batched-tokens-8192)
