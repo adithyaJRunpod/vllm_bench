@@ -1,0 +1,20 @@
+timestamp: 2026-03-31T22:56:33+00:00
+model: Qwen/Qwen3-8B
+vllm_version: 0.18.0
+gpu: NVIDIA H100 80GB HBM3
+gpu_memory: 81559 MiB
+driver: 580.126.09
+request_rate: 90
+max_concurrency: 128
+input_len: 128
+output_len: 128
+num_prompts: 1024
+
+config [baseline]: vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --dtype auto --gpu-memory-utilization 0.95 --max-model-len 8128 --enforce-eager
+config [prefix-caching]: vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --dtype auto --gpu-memory-utilization 0.95 --max-model-len 8128 --enable-prefix-caching
+config [max-seqs-64]: vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --dtype auto --gpu-memory-utilization 0.95 --max-model-len 8128 --max-num-seqs 64
+config [max-seqs-256]: vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --dtype auto --gpu-memory-utilization 0.95 --max-model-len 8128 --max-num-seqs 256
+config [max-seqs-512]: vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --dtype auto --gpu-memory-utilization 0.95 --max-model-len 8128 --max-num-seqs 512
+config [kv-cache-fp8]: vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --dtype auto --gpu-memory-utilization 0.95 --max-model-len 8128 --kv-cache-dtype fp8
+config [batched-tokens-4096]: vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --dtype auto --gpu-memory-utilization 0.95 --max-model-len 8128 --max-num-batched-tokens 4096
+config [batched-tokens-8192]: vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --dtype auto --gpu-memory-utilization 0.95 --max-model-len 8128 --max-num-batched-tokens 8192

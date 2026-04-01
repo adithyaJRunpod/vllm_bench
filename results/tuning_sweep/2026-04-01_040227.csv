@@ -1,0 +1,9 @@
+experiment,config,failed_requests,request_throughput,total_token_throughput,mean_ttft_ms,p50_ttft_ms,p90_ttft_ms,mean_e2el_ms,p50_e2el_ms,p90_e2el_ms
+baseline,baseline,0,22.71,17439.91,82.48,63.54,158.15,3947.94,4003.03,4041.49
+batched-tokens-4096,batched-tokens-4096,0,24.39,18729.33,73.7,59.81,127.23,3677.95,3750.18,3769.17
+batched-tokens-8192,batched-tokens-8192,0,24.21,18592.0,85.38,63.73,193.28,3703.96,3774.75,3808.25
+kv-cache-fp8,kv-cache-fp8,0,25.27,19405.55,86.39,63.15,185.26,3542.5,3604.09,3645.72
+max-seqs-256,max-seqs-256,0,24.4,18737.23,84.46,65.56,159.09,3677.46,3754.4,3778.5
+max-seqs-512,max-seqs-512,0,24.59,18881.49,73.73,67.65,105.03,3648.65,3721.21,3749.99
+max-seqs-64,max-seqs-64,0,20.5,15745.43,1424.61,1452.51,2014.2,4395.29,4453.96,5010.12
+prefix-caching,prefix-caching,0,24.44,18769.66,70.35,61.3,106.42,3669.03,3743.53,3764.92

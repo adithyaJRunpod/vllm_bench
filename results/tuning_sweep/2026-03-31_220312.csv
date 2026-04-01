@@ -1,0 +1,3 @@
+experiment,config,failed_requests,request_throughput,total_token_throughput,mean_ttft_ms,p50_ttft_ms,p90_ttft_ms,mean_e2el_ms,p50_e2el_ms,p90_e2el_ms
+baseline,baseline,0,51.38,13154.48,776.38,306.29,4274.55,2391.97,1847.85,5842.12
+cuda-graphs,cuda-graphs,0,56.27,14405.44,765.29,305.0,4140.21,2175.8,1677.13,5500.83
