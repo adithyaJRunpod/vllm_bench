@@ -21,6 +21,16 @@ RPS_VALUES=(5 10 15 20 25 30 35 40 50 60 80 100 120 150 200 250 300 400 500)
 OUTDIR="logs/rps_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
 
+echo "--- Server check (logging what is currently running) ---"
+{
+  echo "timestamp: $(date -Iseconds)"
+  echo "server_cmd: $(ps -eo args= | grep '[v]llm serve' || echo 'NO vLLM SERVER RUNNING')"
+  echo "input_len: $INPUT_LEN"
+  echo "output_len: $OUTPUT_LEN"
+  echo "max_concurrency: $MAX_CONCURRENCY"
+} | tee "$OUTDIR/environment.txt"
+echo ""
+
 TOTAL=${#RPS_VALUES[@]}
 echo "Output directory: $OUTDIR"
 echo "Running $TOTAL RPS levels: ${RPS_VALUES[*]}"

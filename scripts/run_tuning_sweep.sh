@@ -168,6 +168,8 @@ for name in "${CONFIG_ORDER[@]}"; do
   echo "Done. Log: $OUTDIR/${name}_bench.log"
 done
 
+stop_server
 echo ""
 echo "All done. Logs in: $OUTDIR"
+echo "Server stopped to avoid stale config leaking into subsequent sweeps."
 echo "Run 'python3 parse_bench_logs.py tuning' to extract the summary CSV."

@@ -20,6 +20,16 @@ CONCURRENCY_VALUES=(4 8 16 24 32 48 64 96 128 150 180 200 256)
 OUTDIR="logs/concurrency_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
 
+echo "--- Server check (logging what is currently running) ---"
+{
+  echo "timestamp: $(date -Iseconds)"
+  echo "server_cmd: $(ps -eo args= | grep '[v]llm serve' || echo 'NO vLLM SERVER RUNNING')"
+  echo "input_len: $INPUT_LEN"
+  echo "output_len: $OUTPUT_LEN"
+  echo "request_rate: $REQUEST_RATE"
+} | tee "$OUTDIR/environment.txt"
+echo ""
+
 TOTAL=${#CONCURRENCY_VALUES[@]}
 echo "Output directory: $OUTDIR"
 echo "Running $TOTAL concurrency levels: ${CONCURRENCY_VALUES[*]}"
