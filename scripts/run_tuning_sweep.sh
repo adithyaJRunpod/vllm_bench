@@ -27,17 +27,19 @@ COMMON_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization
 declare -A CONFIGS
 CONFIGS=(
   [baseline]=""
-  [prefix-caching]="--enable-prefix-caching"
+  [no-prefix-caching]="--no-enable-prefix-caching"
+  [no-chunked-prefill]="--no-enable-chunked-prefill"
   [max-seqs-64]="--max-num-seqs 64"
   [max-seqs-256]="--max-num-seqs 256"
   [max-seqs-512]="--max-num-seqs 512"
   [kv-cache-fp8]="--kv-cache-dtype fp8"
+  [fp8-weights-only]="--quantization fp8"
   [fp8-full]="--quantization fp8 --kv-cache-dtype fp8"
   [batched-tokens-4096]="--max-num-batched-tokens 4096"
-  [batched-tokens-8192]="--max-num-batched-tokens 8192"
+  [batched-tokens-16384]="--max-num-batched-tokens 16384"
 )
 
-CONFIG_ORDER=(baseline prefix-caching max-seqs-64 max-seqs-256 max-seqs-512 kv-cache-fp8 fp8-full batched-tokens-4096 batched-tokens-8192)
+CONFIG_ORDER=(baseline no-prefix-caching no-chunked-prefill max-seqs-64 max-seqs-256 max-seqs-512 kv-cache-fp8 fp8-weights-only fp8-full batched-tokens-4096 batched-tokens-16384)
 
 OUTDIR="logs/tuning_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
