@@ -26,7 +26,7 @@ COMMON_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization
 
 declare -A CONFIGS
 CONFIGS=(
-  [baseline]="--enforce-eager"
+  [baseline]=""
   [prefix-caching]="--enable-prefix-caching"
   [max-seqs-64]="--max-num-seqs 64"
   [max-seqs-256]="--max-num-seqs 256"
