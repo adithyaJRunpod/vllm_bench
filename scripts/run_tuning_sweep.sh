@@ -24,6 +24,8 @@ MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-8128}"
 
 COMMON_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization $GPU_UTIL --max-model-len $MAX_MODEL_LEN"
 
+SPEC_MODEL="${VLLM_SPEC_MODEL:-Qwen/Qwen3-0.6B}"
+
 declare -A CONFIGS
 CONFIGS=(
   [baseline]=""
@@ -37,9 +39,12 @@ CONFIGS=(
   [fp8-full]="--quantization fp8 --kv-cache-dtype fp8"
   [batched-tokens-4096]="--max-num-batched-tokens 4096"
   [batched-tokens-16384]="--max-num-batched-tokens 16384"
+  [spec-decode-3]="--quantization fp8 --kv-cache-dtype fp8 --speculative-model $SPEC_MODEL --num-speculative-tokens 3"
+  [spec-decode-5]="--quantization fp8 --kv-cache-dtype fp8 --speculative-model $SPEC_MODEL --num-speculative-tokens 5"
+  [spec-decode-8]="--quantization fp8 --kv-cache-dtype fp8 --speculative-model $SPEC_MODEL --num-speculative-tokens 8"
 )
 
-CONFIG_ORDER=(baseline no-prefix-caching no-chunked-prefill max-seqs-64 max-seqs-256 max-seqs-512 kv-cache-fp8 fp8-weights-only fp8-full batched-tokens-4096 batched-tokens-16384)
+CONFIG_ORDER=(baseline no-prefix-caching no-chunked-prefill max-seqs-64 max-seqs-256 max-seqs-512 kv-cache-fp8 fp8-weights-only fp8-full batched-tokens-4096 batched-tokens-16384 spec-decode-3 spec-decode-5 spec-decode-8)
 
 OUTDIR="logs/tuning_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
@@ -62,6 +67,7 @@ echo "--- Capturing environment ---"
   echo "input_len: $INPUT_LEN"
   echo "output_len: $OUTPUT_LEN"
   echo "num_prompts: $NUM_PROMPTS"
+  echo "spec_model: $SPEC_MODEL"
   echo ""
   for name in "${CONFIG_ORDER[@]}"; do
     echo "config [$name]: vllm serve $MODEL $COMMON_FLAGS ${CONFIGS[$name]}"
