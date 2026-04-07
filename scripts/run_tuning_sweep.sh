@@ -39,9 +39,9 @@ CONFIGS=(
   [fp8-full]="--quantization fp8 --kv-cache-dtype fp8"
   [batched-tokens-4096]="--max-num-batched-tokens 4096"
   [batched-tokens-16384]="--max-num-batched-tokens 16384"
-  [spec-decode-3]="--quantization fp8 --kv-cache-dtype fp8 --speculative-model $SPEC_MODEL --num-speculative-tokens 3"
-  [spec-decode-5]="--quantization fp8 --kv-cache-dtype fp8 --speculative-model $SPEC_MODEL --num-speculative-tokens 5"
-  [spec-decode-8]="--quantization fp8 --kv-cache-dtype fp8 --speculative-model $SPEC_MODEL --num-speculative-tokens 8"
+  [spec-decode-3]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":3,\"method\":\"draft_model\"}"
+  [spec-decode-5]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":5,\"method\":\"draft_model\"}"
+  [spec-decode-8]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":8,\"method\":\"draft_model\"}"
 )
 
 CONFIG_ORDER=(baseline no-prefix-caching no-chunked-prefill max-seqs-64 max-seqs-256 max-seqs-512 kv-cache-fp8 fp8-weights-only fp8-full batched-tokens-4096 batched-tokens-16384 spec-decode-3 spec-decode-5 spec-decode-8)
@@ -90,8 +90,10 @@ start_server() {
   local name="$1"
   local extra_flags="$2"
   echo "Starting vLLM server [$name]: vllm serve $MODEL $COMMON_FLAGS $extra_flags"
+  set +B
   # shellcheck disable=SC2086
   nohup vllm serve "$MODEL" $COMMON_FLAGS $extra_flags > "$OUTDIR/${name}_server.log" 2>&1 &
+  set -B
   echo "Server PID: $!"
 }
 
