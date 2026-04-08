@@ -29,8 +29,6 @@ SPEC_MODEL="${VLLM_SPEC_MODEL:-Qwen/Qwen3-0.6B}"
 declare -A CONFIGS
 CONFIGS=(
   [baseline]=""
-  [no-prefix-caching]="--no-enable-prefix-caching"
-  [no-chunked-prefill]="--no-enable-chunked-prefill"
   [max-seqs-64]="--max-num-seqs 64"
   [max-seqs-256]="--max-num-seqs 256"
   [max-seqs-512]="--max-num-seqs 512"
@@ -42,9 +40,12 @@ CONFIGS=(
   [spec-decode-3]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":3,\"method\":\"draft_model\"}"
   [spec-decode-5]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":5,\"method\":\"draft_model\"}"
   [spec-decode-8]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":8,\"method\":\"draft_model\"}"
+  [spec-decode-fp16-3]="--speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":3,\"method\":\"draft_model\"}"
+  [spec-decode-fp16-5]="--speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":5,\"method\":\"draft_model\"}"
+  [spec-decode-fp16-8]="--speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":8,\"method\":\"draft_model\"}"
 )
 
-CONFIG_ORDER=(baseline no-prefix-caching no-chunked-prefill max-seqs-64 max-seqs-256 max-seqs-512 kv-cache-fp8 fp8-weights-only fp8-full batched-tokens-4096 batched-tokens-16384 spec-decode-3 spec-decode-5 spec-decode-8)
+CONFIG_ORDER=(baseline max-seqs-64 max-seqs-256 max-seqs-512 kv-cache-fp8 fp8-weights-only fp8-full batched-tokens-4096 batched-tokens-16384 spec-decode-3 spec-decode-5 spec-decode-8 spec-decode-fp16-3 spec-decode-fp16-5 spec-decode-fp16-8)
 
 OUTDIR="logs/tuning_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
