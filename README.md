@@ -6,7 +6,7 @@ Benchmark scripts for vLLM on RunPod H100 GPUs.
 
 ```bash
 # Install vLLM
-pip install vllm
+pip install vllm==0.18.0
 
 # Clone repo & fix line endings
 cd /workspace
