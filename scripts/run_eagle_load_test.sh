@@ -12,6 +12,7 @@ MODEL="${VLLM_MODEL:-meta-llama/Llama-3.1-8B-Instruct}"
 EAGLE_HEAD="${VLLM_EAGLE_HEAD:-yuhuili/EAGLE-LLaMA3-Instruct-8B}"
 NUM_SPEC_TOKENS="${VLLM_SPEC_TOKENS:-5}"
 BASE_URL="http://127.0.0.1:8000"
+API_KEY="${VLLM_API_KEY:-}"
 SHAREGPT_PATH="${SHAREGPT_PATH:-/tmp/sharegpt.json}"
 
 COMMON_SERVER_FLAGS="--host 0.0.0.0 --port 8000"
@@ -76,21 +77,25 @@ run_bench() {
 
   echo "  [$label @ $load] RPS=$rps  concurrency=$conc  prompts=$prompts"
 
-  vllm bench serve \
-    --backend openai-chat \
-    --base-url "$BASE_URL" \
-    --endpoint /v1/chat/completions \
-    --model "$MODEL" \
-    --dataset-name sharegpt \
-    --dataset-path "$SHAREGPT_PATH" \
-    --num-prompts "$prompts" \
-    --num-warmups "$warmups" \
-    --request-rate "$rps" \
-    --max-concurrency "$conc" \
-    --temperature 0 \
-    --percentile-metrics ttft,itl,e2el \
-    --metric-percentiles 50,90,99 \
-    > "$logfile" 2>&1
+  local CMD=(vllm bench serve
+    --backend openai-chat
+    --base-url "$BASE_URL"
+    --endpoint /v1/chat/completions
+    --model "$MODEL"
+    --dataset-name sharegpt
+    --dataset-path "$SHAREGPT_PATH"
+    --num-prompts "$prompts"
+    --num-warmups "$warmups"
+    --request-rate "$rps"
+    --max-concurrency "$conc"
+    --temperature 0
+    --percentile-metrics ttft,itl,e2el
+    --metric-percentiles 50,90,99
+  )
+
+  [[ -n "$API_KEY" ]] && CMD+=(--header "Authorization=Bearer $API_KEY")
+
+  "${CMD[@]}" > "$logfile" 2>&1
 
   echo "  Done → $logfile"
 }
