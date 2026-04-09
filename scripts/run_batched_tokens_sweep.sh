@@ -2,21 +2,21 @@
 set -euo pipefail
 
 ############################################
-# Tuning sweep for vLLM
-# Restarts the vLLM server with different
-# flag combos and benchmarks each one.
-# Each config changes ONE variable from baseline.
+# max-num-batched-tokens sweep for vLLM
+# Restarts the server for each value.
+# Best run with long prompts (e.g. 2048/512)
+# where chunked prefill actually kicks in.
 ############################################
 
-MODEL="${VLLM_MODEL:?Set VLLM_MODEL before running (e.g. export VLLM_MODEL=Qwen/Qwen3-8B)}"
+MODEL="${VLLM_MODEL:?Set VLLM_MODEL before running (e.g. export VLLM_MODEL=Qwen/Qwen2.5-32B-Instruct-FP8)}"
 BASE_URL="http://127.0.0.1:8000"
 API_KEY="${VLLM_API_KEY:-}"
 
 REQUEST_RATE="${VLLM_REQUEST_RATE:?Set VLLM_REQUEST_RATE (e.g. export VLLM_REQUEST_RATE=120)}"
 MAX_CONCURRENCY="${VLLM_MAX_CONCURRENCY:?Set VLLM_MAX_CONCURRENCY (e.g. export VLLM_MAX_CONCURRENCY=128)}"
-INPUT_LEN="${VLLM_INPUT_LEN:?Set VLLM_INPUT_LEN (e.g. export VLLM_INPUT_LEN=128)}"
-OUTPUT_LEN="${VLLM_OUTPUT_LEN:?Set VLLM_OUTPUT_LEN (e.g. export VLLM_OUTPUT_LEN=128)}"
-NUM_PROMPTS="${VLLM_NUM_PROMPTS:-1024}"
+INPUT_LEN="${VLLM_INPUT_LEN:-2048}"
+OUTPUT_LEN="${VLLM_OUTPUT_LEN:-512}"
+NUM_PROMPTS="${VLLM_NUM_PROMPTS:-512}"
 
 DTYPE="${VLLM_DTYPE:-auto}"
 GPU_UTIL="${VLLM_GPU_UTIL:-0.95}"
@@ -24,30 +24,15 @@ MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-8192}"
 
 COMMON_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization $GPU_UTIL --max-model-len $MAX_MODEL_LEN"
 
-SPEC_MODEL="${VLLM_SPEC_MODEL:-Qwen/Qwen3-0.6B}"
+BATCHED_TOKEN_VALUES=(512 1024 2048 4096 8192 16384)
 
-declare -A CONFIGS
-CONFIGS=(
-  [baseline]=""
-  [kv-cache-fp8]="--kv-cache-dtype fp8"
-  [fp8-weights-only]="--quantization fp8"
-  [fp8-full]="--quantization fp8 --kv-cache-dtype fp8"
-  [spec-decode-3]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":3,\"method\":\"draft_model\"}"
-  [spec-decode-5]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":5,\"method\":\"draft_model\"}"
-  [spec-decode-8]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":8,\"method\":\"draft_model\"}"
-  [spec-decode-fp16-3]="--speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":3,\"method\":\"draft_model\"}"
-  [spec-decode-fp16-5]="--speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":5,\"method\":\"draft_model\"}"
-  [spec-decode-fp16-8]="--speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":8,\"method\":\"draft_model\"}"
-)
-
-CONFIG_ORDER=(baseline kv-cache-fp8 fp8-weights-only fp8-full spec-decode-3 spec-decode-5 spec-decode-8 spec-decode-fp16-3 spec-decode-fp16-5 spec-decode-fp16-8)
-
-OUTDIR="logs/tuning_sweep/$(date +%F_%H%M%S)"
+OUTDIR="logs/batched_tokens_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
 
-TOTAL=${#CONFIG_ORDER[@]}
+TOTAL=${#BATCHED_TOKEN_VALUES[@]}
 echo "Output directory: $OUTDIR"
-echo "Testing $TOTAL configs: ${CONFIG_ORDER[*]}"
+echo "Testing $TOTAL max-num-batched-tokens values: ${BATCHED_TOKEN_VALUES[*]}"
+echo "Workload: input=$INPUT_LEN output=$OUTPUT_LEN prompts=$NUM_PROMPTS"
 echo ""
 
 echo "--- Capturing environment ---"
@@ -63,10 +48,11 @@ echo "--- Capturing environment ---"
   echo "input_len: $INPUT_LEN"
   echo "output_len: $OUTPUT_LEN"
   echo "num_prompts: $NUM_PROMPTS"
-  echo "spec_model: $SPEC_MODEL"
+  echo "max_model_len: $MAX_MODEL_LEN"
+  echo "common_flags: $COMMON_FLAGS"
   echo ""
-  for name in "${CONFIG_ORDER[@]}"; do
-    echo "config [$name]: vllm serve $MODEL $COMMON_FLAGS ${CONFIGS[$name]}"
+  for v in "${BATCHED_TOKEN_VALUES[@]}"; do
+    echo "config [bt-$v]: vllm serve $MODEL $COMMON_FLAGS --max-num-batched-tokens $v"
   done
 } | tee "$OUTDIR/environment.txt"
 echo ""
@@ -83,12 +69,12 @@ stop_server() {
 }
 
 start_server() {
-  local name="$1"
-  local extra_flags="$2"
-  echo "Starting vLLM server [$name]: vllm serve $MODEL $COMMON_FLAGS $extra_flags"
+  local label="$1"
+  local bt_val="$2"
+  echo "Starting vLLM server [$label]: vllm serve $MODEL $COMMON_FLAGS --max-num-batched-tokens $bt_val"
   set +B
   # shellcheck disable=SC2086
-  nohup vllm serve "$MODEL" $COMMON_FLAGS $extra_flags > "$OUTDIR/${name}_server.log" 2>&1 &
+  nohup vllm serve "$MODEL" $COMMON_FLAGS --max-num-batched-tokens "$bt_val" > "$OUTDIR/${label}_server.log" 2>&1 &
   set -B
   echo "Server PID: $!"
 }
@@ -130,21 +116,20 @@ warmup_server() {
 }
 
 RUN=0
-for name in "${CONFIG_ORDER[@]}"; do
+for bt in "${BATCHED_TOKEN_VALUES[@]}"; do
   RUN=$((RUN + 1))
-  extra_flags="${CONFIGS[$name]}"
+  label="bt-${bt}"
 
   echo ""
   echo "=========================================="
-  echo "[$RUN/$TOTAL] Config: $name"
-  echo "  Flags: $extra_flags"
+  echo "[$RUN/$TOTAL] max-num-batched-tokens=$bt"
   echo "=========================================="
 
   stop_server
-  start_server "$name" "$extra_flags"
+  start_server "$label" "$bt"
 
   if ! wait_for_server; then
-    echo "SKIPPING $name — server failed to start. Check $OUTDIR/${name}_server.log"
+    echo "SKIPPING $label — server failed to start. Check $OUTDIR/${label}_server.log"
     continue
   fi
 
@@ -168,12 +153,12 @@ for name in "${CONFIG_ORDER[@]}"; do
 
   [[ -n "$API_KEY" ]] && CMD+=(--header "Authorization=Bearer $API_KEY")
 
-  "${CMD[@]}" > "$OUTDIR/${name}_bench.log" 2>&1
-  echo "Done. Log: $OUTDIR/${name}_bench.log"
+  "${CMD[@]}" > "$OUTDIR/${label}_bench.log" 2>&1
+  echo "Done. Log: $OUTDIR/${label}_bench.log"
 done
 
 stop_server
 echo ""
 echo "All done. Logs in: $OUTDIR"
 echo "Server stopped to avoid stale config leaking into subsequent sweeps."
-echo "Run 'python3 parse_bench_logs.py tuning' to extract the summary CSV."
+echo "Run 'python3 parse_bench_logs.py batched_tokens' to extract the summary CSV."
