@@ -24,23 +24,15 @@ MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-8192}"
 
 COMMON_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization $GPU_UTIL --max-model-len $MAX_MODEL_LEN"
 
-SPEC_MODEL="${VLLM_SPEC_MODEL:-Qwen/Qwen3-0.6B}"
-
 declare -A CONFIGS
 CONFIGS=(
   [baseline]=""
   [kv-cache-fp8]="--kv-cache-dtype fp8"
   [fp8-weights-only]="--quantization fp8"
   [fp8-full]="--quantization fp8 --kv-cache-dtype fp8"
-  [spec-decode-3]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":3,\"method\":\"draft_model\"}"
-  [spec-decode-5]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":5,\"method\":\"draft_model\"}"
-  [spec-decode-8]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":8,\"method\":\"draft_model\"}"
-  [spec-decode-fp16-3]="--speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":3,\"method\":\"draft_model\"}"
-  [spec-decode-fp16-5]="--speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":5,\"method\":\"draft_model\"}"
-  [spec-decode-fp16-8]="--speculative-config {\"model\":\"$SPEC_MODEL\",\"num_speculative_tokens\":8,\"method\":\"draft_model\"}"
 )
 
-CONFIG_ORDER=(baseline kv-cache-fp8 fp8-weights-only fp8-full spec-decode-3 spec-decode-5 spec-decode-8 spec-decode-fp16-3 spec-decode-fp16-5 spec-decode-fp16-8)
+CONFIG_ORDER=(baseline kv-cache-fp8 fp8-weights-only fp8-full)
 
 OUTDIR="logs/tuning_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
@@ -63,7 +55,6 @@ echo "--- Capturing environment ---"
   echo "input_len: $INPUT_LEN"
   echo "output_len: $OUTPUT_LEN"
   echo "num_prompts: $NUM_PROMPTS"
-  echo "spec_model: $SPEC_MODEL"
   echo ""
   for name in "${CONFIG_ORDER[@]}"; do
     echo "config [$name]: vllm serve $MODEL $COMMON_FLAGS ${CONFIGS[$name]}"
