@@ -10,6 +10,7 @@ set -euo pipefail
 
 MODEL="${VLLM_MODEL:-meta-llama/Llama-3.1-8B-Instruct}"
 EAGLE_HEAD="${VLLM_EAGLE_HEAD:-yuhuili/EAGLE-LLaMA3-Instruct-8B}"
+SPEC_METHOD="${VLLM_SPEC_METHOD:-eagle3}"
 NUM_SPEC_TOKENS="${VLLM_SPEC_TOKENS:-5}"
 BASE_URL="http://127.0.0.1:8000"
 API_KEY="${VLLM_API_KEY:-}"
@@ -113,6 +114,7 @@ echo "=== Eagle Load Test ==="
   echo "timestamp: $(date -Iseconds)"
   echo "model: $MODEL"
   echo "eagle_head: $EAGLE_HEAD"
+  echo "spec_method: $SPEC_METHOD"
   echo "num_speculative_tokens: $NUM_SPEC_TOKENS"
   echo "vllm_version: $(python3 -c 'import vllm; print(vllm.__version__)' 2>/dev/null || echo unknown)"
   echo "gpu: $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo unknown)"
@@ -152,7 +154,7 @@ echo "============================================"
 
 stop_server
 start_server "eagle" \
-  --speculative-config "{\"model\":\"$EAGLE_HEAD\",\"method\":\"eagle\",\"num_speculative_tokens\":$NUM_SPEC_TOKENS}"
+  --speculative-config "{\"model\":\"$EAGLE_HEAD\",\"method\":\"$SPEC_METHOD\",\"num_speculative_tokens\":$NUM_SPEC_TOKENS}"
 
 if ! wait_for_server; then
   echo "FATAL: eagle server failed to start."
