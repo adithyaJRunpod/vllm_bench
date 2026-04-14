@@ -63,9 +63,8 @@ def extract_metrics(json_path: str) -> dict:
         "latency_median_sec": safe_get("request_latency", "median"),
         "latency_mean_sec": safe_get("request_latency", "mean"),
         "latency_p95_sec": safe_percentile("request_latency", 95),
-        "total_requests": safe_get("request_totals", "successful")
-              if safe_get("request_totals", "successful") is not None
-              else safe_get("request_totals", "total"),
+        "total_requests": m.get("request_totals", {}).get("successful")
+              or m.get("request_totals", {}).get("total"),
         "duration_sec": b.get("duration"),
     }
 
@@ -91,7 +90,11 @@ def main():
     pattern = re.compile(r"^(.+)_run(\d+)\.json$")
     results = []
 
-    for json_file in sorted(log_dir.glob("*_run*.json")):
+    def natural_sort_key(path):
+        return [int(t) if t.isdigit() else t.lower()
+                for t in re.split(r'(\d+)', path.name)]
+
+    for json_file in sorted(log_dir.glob("*_run*.json"), key=natural_sort_key):
         match = pattern.match(json_file.name)
         if not match:
             continue
