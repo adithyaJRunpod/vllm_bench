@@ -128,7 +128,7 @@ def main():
     # --- Clean console table ---
     # Throughput: mean (aggregate server rate)
     # Latency: median (typical per-request experience)
-    col_config = 24
+    col_config = 30
     col = 12
 
     header = (

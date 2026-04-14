@@ -2,33 +2,32 @@
 set -euo pipefail
 
 ############################################
-# K-Sweep: Baseline vs FP8 vs FP8+EAGLE3
-# at different speculative token counts (K).
+# C × Config Sweep: Baseline vs FP8 vs
+# FP8+EAGLE3 across concurrency levels.
 #
-# Uses realistic token length variation
-# (stdev enabled by default).
+# Outer loop = configs (server restart each)
+# Inner loop = C levels (no restart needed)
 #
 # Usage:
 #   VLLM_MODEL=Qwen/Qwen3-8B \
-#   GUIDELLM_CONCURRENCY=128 \
-#   bash scripts/run_guidellm_k_sweep.sh
+#   bash scripts/run_guidellm_c_config_sweep.sh
 ############################################
 
 MODEL="${VLLM_MODEL:?Set VLLM_MODEL (e.g. export VLLM_MODEL=Qwen/Qwen3-8B)}"
 
 EAGLE_MODEL="${EAGLE_MODEL:-RedHatAI/Qwen3-8B-speculator.eagle3}"
 EAGLE_METHOD="${EAGLE_METHOD:-eagle3}"
-K_VALUES="${K_VALUES:-1,2,3,5,7}"
+SPEC_K="${SPEC_K:-3}"
 
-CONCURRENCY="${GUIDELLM_CONCURRENCY:?Set GUIDELLM_CONCURRENCY from C-sweep results}"
-INPUT_TOKENS="${GUIDELLM_INPUT_TOKENS:-550}"
-INPUT_STDEV="${GUIDELLM_INPUT_STDEV:-55}"
-OUTPUT_TOKENS="${GUIDELLM_OUTPUT_TOKENS:-150}"
-OUTPUT_STDEV="${GUIDELLM_OUTPUT_STDEV:-15}"
+C_LEVELS="${GUIDELLM_C_LEVELS:-4,16,64,128,256}"
+INPUT_TOKENS="${GUIDELLM_INPUT_TOKENS:-128}"
+INPUT_STDEV="${GUIDELLM_INPUT_STDEV:-10}"
+OUTPUT_TOKENS="${GUIDELLM_OUTPUT_TOKENS:-128}"
+OUTPUT_STDEV="${GUIDELLM_OUTPUT_STDEV:-10}"
 TEXT_SOURCE="${GUIDELLM_TEXT_SOURCE:-data:prideandprejudice.txt.gz}"
 MAX_REQUESTS="${GUIDELLM_MAX_REQUESTS:-500}"
 RANDOM_SEED="${GUIDELLM_SEED:-42}"
-NUM_RUNS="${NUM_RUNS:-2}"
+NUM_RUNS="${NUM_RUNS:-3}"
 
 DTYPE="${VLLM_DTYPE:-auto}"
 GPU_UTIL="${VLLM_GPU_UTIL:-0.95}"
@@ -38,28 +37,31 @@ COMMON_SERVER_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-util
 BASE_URL="http://localhost:8000"
 
 DATA_CFG="prompt_tokens=$INPUT_TOKENS,output_tokens=$OUTPUT_TOKENS,source=$TEXT_SOURCE"
-[[ "$INPUT_STDEV" -gt 0 ]] 2>/dev/null && DATA_CFG="prompt_tokens=$INPUT_TOKENS,prompt_tokens_stdev=$INPUT_STDEV,output_tokens=$OUTPUT_TOKENS,output_tokens_stdev=$OUTPUT_STDEV,source=$TEXT_SOURCE"
+if [[ "$INPUT_STDEV" -gt 0 ]] 2>/dev/null; then
+  DATA_CFG="prompt_tokens=$INPUT_TOKENS,prompt_tokens_stdev=$INPUT_STDEV,output_tokens=$OUTPUT_TOKENS,output_tokens_stdev=$OUTPUT_STDEV,source=$TEXT_SOURCE"
+fi
 
-OUTDIR="logs/guidellm_k_sweep/$(date +%F_%H%M%S)"
+OUTDIR="logs/guidellm_c_config_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
 
-# ── build config matrix ──────────────────────────────────
+# ── config matrix ────────────────────────────────────────
 
 declare -a CONFIG_ORDER
 declare -A CONFIG_FLAGS
 
-CONFIG_ORDER=(baseline fp8-full)
+CONFIG_ORDER=(
+  baseline
+  fp8-full
+  fp8-eagle3-k${SPEC_K}
+)
+
 CONFIG_FLAGS=(
   [baseline]=""
   [fp8-full]="--quantization fp8 --kv-cache-dtype fp8"
+  [fp8-eagle3-k${SPEC_K}]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$EAGLE_MODEL\",\"method\":\"$EAGLE_METHOD\",\"num_speculative_tokens\":$SPEC_K}"
 )
 
-IFS=',' read -ra K_LEVELS <<< "$K_VALUES"
-for K in "${K_LEVELS[@]}"; do
-  name="fp8-eagle3-k${K}"
-  CONFIG_ORDER+=("$name")
-  CONFIG_FLAGS[$name]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$EAGLE_MODEL\",\"method\":\"$EAGLE_METHOD\",\"num_speculative_tokens\":$K}"
-done
+IFS=',' read -ra C_ARRAY <<< "$C_LEVELS"
 
 # ── helpers ──────────────────────────────────────────────
 
@@ -118,18 +120,18 @@ warmup_server() {
 }
 
 run_bench() {
-  local label="$1" run_num="$2"
-  local json_out="$OUTDIR/${label}_run${run_num}.json"
-  local console_out="$OUTDIR/${label}_run${run_num}.log"
+  local label="$1" conc="$2" run_num="$3"
+  local json_out="$OUTDIR/${label}-c${conc}_run${run_num}.json"
+  local console_out="$OUTDIR/${label}-c${conc}_run${run_num}.log"
 
-  echo "  [$label] run $run_num/$NUM_RUNS  (input=$INPUT_TOKENS±$INPUT_STDEV, output=$OUTPUT_TOKENS±$OUTPUT_STDEV, conc=$CONCURRENCY, requests=$MAX_REQUESTS)"
+  echo "  [$label] C=$conc  run $run_num/$NUM_RUNS  (input=$INPUT_TOKENS±$INPUT_STDEV, output=$OUTPUT_TOKENS±$OUTPUT_STDEV, requests=$MAX_REQUESTS)"
 
   guidellm benchmark run \
     --target "$BASE_URL" \
     --model "$MODEL" \
     --data "$DATA_CFG" \
     --profile concurrent \
-    --rate "$CONCURRENCY" \
+    --rate "$conc" \
     --max-requests "$MAX_REQUESTS" \
     --random-seed "$RANDOM_SEED" \
     --outputs "$json_out" \
@@ -140,16 +142,20 @@ run_bench() {
 
 # ── pre-flight ───────────────────────────────────────────
 
-TOTAL=${#CONFIG_ORDER[@]}
-echo "=== GuideLLM K-Sweep ($TOTAL configs) ==="
+NUM_CONFIGS=${#CONFIG_ORDER[@]}
+NUM_C=${#C_ARRAY[@]}
+TOTAL_BENCHMARKS=$((NUM_CONFIGS * NUM_C * NUM_RUNS))
+
+echo "=== GuideLLM C × Config Sweep ==="
+echo "=== $NUM_CONFIGS configs × $NUM_C C-levels × $NUM_RUNS runs = $TOTAL_BENCHMARKS benchmarks ==="
 {
   echo "timestamp: $(date -Iseconds)"
   echo "model: $MODEL"
   echo "eagle_model: $EAGLE_MODEL"
   echo "eagle_method: $EAGLE_METHOD"
-  echo "k_values: $K_VALUES"
+  echo "spec_k: $SPEC_K"
+  echo "c_levels: $C_LEVELS"
   echo "num_runs: $NUM_RUNS"
-  echo "concurrency: $CONCURRENCY"
   echo "input_tokens: $INPUT_TOKENS (stdev=$INPUT_STDEV)"
   echo "output_tokens: $OUTPUT_TOKENS (stdev=$OUTPUT_STDEV)"
   echo "text_source: $TEXT_SOURCE"
@@ -167,17 +173,18 @@ echo "=== GuideLLM K-Sweep ($TOTAL configs) ==="
 } | tee "$OUTDIR/environment.txt"
 echo ""
 
-# ── Run each config ──────────────────────────────────────
+# ── Run each config across all C levels ──────────────────
 
-RUN=0
+CFG_NUM=0
 for name in "${CONFIG_ORDER[@]}"; do
-  RUN=$((RUN + 1))
+  CFG_NUM=$((CFG_NUM + 1))
   flags="${CONFIG_FLAGS[$name]}"
 
   echo ""
   echo "============================================"
-  echo "  [$RUN/$TOTAL] $name"
+  echo "  Config [$CFG_NUM/$NUM_CONFIGS]: $name"
   echo "  Flags: ${flags:-(none)}"
+  echo "  C levels: ${C_LEVELS}"
   echo "============================================"
 
   stop_server
@@ -190,9 +197,13 @@ for name in "${CONFIG_ORDER[@]}"; do
 
   warmup_server
 
-  for ((r=1; r<=NUM_RUNS; r++)); do
-    run_bench "$name" "$r"
-    sleep 2
+  for C in "${C_ARRAY[@]}"; do
+    echo ""
+    echo "  --- $name @ C=$C ---"
+    for ((r=1; r<=NUM_RUNS; r++)); do
+      run_bench "$name" "$C" "$r"
+      sleep 2
+    done
   done
 done
 
@@ -202,7 +213,7 @@ stop_server
 
 echo ""
 echo "============================================"
-echo "  K-SWEEP RESULTS"
+echo "  C × CONFIG SWEEP RESULTS"
 echo "============================================"
 echo ""
 
@@ -210,4 +221,4 @@ python3 "$(dirname "$0")/../parse_guidellm_results.py" "$OUTDIR"
 
 echo ""
 echo "Full logs: $OUTDIR/"
-echo "Done. Compare K values to find the optimal speculative token count."
+echo "Done. Compare configs across concurrency levels."
