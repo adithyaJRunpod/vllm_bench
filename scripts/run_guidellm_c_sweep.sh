@@ -31,7 +31,8 @@ EXTRA_SERVER_FLAGS="${VLLM_EXTRA_FLAGS:---no-enable-prefix-caching}"
 COMMON_SERVER_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization $GPU_UTIL --max-model-len $MAX_MODEL_LEN $EXTRA_SERVER_FLAGS"
 BASE_URL="http://localhost:8000"
 
-DATA_CFG="prompt_tokens=$INPUT_TOKENS,prompt_tokens_stdev=$INPUT_STDEV,output_tokens=$OUTPUT_TOKENS,output_tokens_stdev=$OUTPUT_STDEV,source=$TEXT_SOURCE"
+DATA_CFG="prompt_tokens=$INPUT_TOKENS,output_tokens=$OUTPUT_TOKENS,source=$TEXT_SOURCE"
+[[ "$INPUT_STDEV" -gt 0 ]] 2>/dev/null && DATA_CFG="prompt_tokens=$INPUT_TOKENS,prompt_tokens_stdev=$INPUT_STDEV,output_tokens=$OUTPUT_TOKENS,output_tokens_stdev=$OUTPUT_STDEV,source=$TEXT_SOURCE"
 
 OUTDIR="logs/guidellm_c_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"

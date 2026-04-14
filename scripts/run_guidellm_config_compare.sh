@@ -38,7 +38,8 @@ MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-8192}"
 COMMON_SERVER_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization $GPU_UTIL --max-model-len $MAX_MODEL_LEN"
 BASE_URL="http://localhost:8000"
 
-DATA_CFG="prompt_tokens=$INPUT_TOKENS,prompt_tokens_stdev=$INPUT_STDEV,output_tokens=$OUTPUT_TOKENS,output_tokens_stdev=$OUTPUT_STDEV,source=$TEXT_SOURCE"
+DATA_CFG="prompt_tokens=$INPUT_TOKENS,output_tokens=$OUTPUT_TOKENS,source=$TEXT_SOURCE"
+[[ "$INPUT_STDEV" -gt 0 ]] 2>/dev/null && DATA_CFG="prompt_tokens=$INPUT_TOKENS,prompt_tokens_stdev=$INPUT_STDEV,output_tokens=$OUTPUT_TOKENS,output_tokens_stdev=$OUTPUT_STDEV,source=$TEXT_SOURCE"
 
 OUTDIR="logs/guidellm_config_compare/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
