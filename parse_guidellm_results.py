@@ -33,7 +33,11 @@ def extract_metrics(json_path: str) -> dict:
 
     def safe_percentile(metric, pct):
         try:
-            return m[metric][s]["percentiles"][f"p{pct:03d}"]
+            percs = m[metric][s]["percentiles"]
+            key = f"p{pct}"
+            if key not in percs:
+                key = f"p{pct:03d}"
+            return percs[key]
         except (KeyError, TypeError, IndexError):
             return None
 
