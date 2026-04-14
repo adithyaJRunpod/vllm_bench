@@ -12,7 +12,6 @@ Example: baseline_run1.json, fp8_run2.json, fp8-eagle3_run1.json
 import json
 import csv
 import sys
-import os
 import re
 from pathlib import Path
 
@@ -69,12 +68,15 @@ def extract_metrics(json_path: str) -> dict:
     }
 
 
-def fmt(val, decimals=2):
+def fmt_num(val, decimals=0):
+    """Format a number with comma separators. Returns 'N/A' for None."""
     if val is None:
         return "N/A"
     if isinstance(val, float):
-        return f"{val:.{decimals}f}"
-    return str(val)
+        if decimals == 0:
+            return f"{val:,.0f}"
+        return f"{val:,.{decimals}f}"
+    return f"{val:,}"
 
 
 def main():
@@ -113,6 +115,7 @@ def main():
         print("No results found.", file=sys.stderr)
         sys.exit(1)
 
+    # --- CSV with all detailed fields ---
     csv_path = log_dir / "summary.csv"
     fieldnames = list(results[0].keys())
     with open(csv_path, "w", newline="") as f:
@@ -122,10 +125,19 @@ def main():
     print(f"CSV saved to: {csv_path}")
     print()
 
+    # --- Clean console table ---
+    # Throughput: mean (aggregate server rate)
+    # Latency: median (typical per-request experience)
+    col_config = 24
+    col = 12
+
     header = (
-        f"{'Config':<16} {'Run':>3} {'Req/s':>7} {'Out tok/s':>10} "
-        f"{'TTFT med':>9} {'TTFT p99':>9} {'ITL med':>8} {'ITL p99':>8} "
-        f"{'TPOT med':>9} {'Lat med':>8} {'Reqs':>5}"
+        f"{'Config':<{col_config}}"
+        f"{'Req/s':>{col}}"
+        f"{'Out tok/s':>{col}}"
+        f"{'TTFT (ms)':>{col}}"
+        f"{'ITL (ms)':>{col}}"
+        f"{'E2EL (ms)':>{col}}"
     )
     separator = "-" * len(header)
     print(separator)
@@ -133,19 +145,20 @@ def main():
     print(separator)
 
     for r in results:
+        e2el_ms = r["latency_median_sec"] * 1000 if r["latency_median_sec"] else None
         print(
-            f"{r['config']:<16} {r['run']:>3} "
-            f"{fmt(r['req_per_sec']):>7} {fmt(r['output_tok_per_sec_median']):>10} "
-            f"{fmt(r['ttft_median_ms']):>9} {fmt(r['ttft_p99_ms']):>9} "
-            f"{fmt(r['itl_median_ms']):>8} {fmt(r['itl_p99_ms']):>8} "
-            f"{fmt(r['tpot_median_ms']):>9} "
-            f"{fmt(r['latency_median_sec']):>8} "
-            f"{fmt(r.get('total_requests'), 0):>5}"
+            f"{r['config']:<{col_config}}"
+            f"{fmt_num(r['req_per_sec'], 1):>{col}}"
+            f"{fmt_num(r['output_tok_per_sec_mean']):>{col}}"
+            f"{fmt_num(r['ttft_median_ms']):>{col}}"
+            f"{fmt_num(r['itl_median_ms']):>{col}}"
+            f"{fmt_num(e2el_ms):>{col}}"
         )
 
     print(separator)
     print()
 
+    # --- Per-config averages (when multiple runs per config) ---
     configs_seen = []
     for r in results:
         if r["config"] not in configs_seen:
@@ -154,33 +167,32 @@ def main():
     if len(configs_seen) > 1:
         print("--- Per-config averages (across runs) ---")
         print()
-        avg_header = (
-            f"{'Config':<16} {'Req/s':>7} {'Out tok/s':>10} "
-            f"{'TTFT med':>9} {'ITL med':>8} {'TPOT med':>9} {'Lat med':>8}"
-        )
-        avg_sep = "-" * len(avg_header)
-        print(avg_sep)
-        print(avg_header)
-        print(avg_sep)
+
+        print(separator)
+        print(header)
+        print(separator)
 
         for config in configs_seen:
             runs = [r for r in results if r["config"] == config]
-            n = len(runs)
 
             def avg(key):
                 vals = [r[key] for r in runs if r[key] is not None]
                 return sum(vals) / len(vals) if vals else None
 
+            e2el_ms = avg("latency_median_sec")
+            if e2el_ms is not None:
+                e2el_ms *= 1000
+
             print(
-                f"{config:<16} "
-                f"{fmt(avg('req_per_sec')):>7} {fmt(avg('output_tok_per_sec_median')):>10} "
-                f"{fmt(avg('ttft_median_ms')):>9} "
-                f"{fmt(avg('itl_median_ms')):>8} "
-                f"{fmt(avg('tpot_median_ms')):>9} "
-                f"{fmt(avg('latency_median_sec')):>8}"
+                f"{config:<{col_config}}"
+                f"{fmt_num(avg('req_per_sec'), 1):>{col}}"
+                f"{fmt_num(avg('output_tok_per_sec_mean')):>{col}}"
+                f"{fmt_num(avg('ttft_median_ms')):>{col}}"
+                f"{fmt_num(avg('itl_median_ms')):>{col}}"
+                f"{fmt_num(e2el_ms):>{col}}"
             )
 
-        print(avg_sep)
+        print(separator)
 
 
 if __name__ == "__main__":
