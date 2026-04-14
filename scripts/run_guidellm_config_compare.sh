@@ -56,7 +56,6 @@ CONFIG_ORDER=(
   fp8-full
   baseline-eagle3-k${SPEC_K}
   baseline-draft-k${SPEC_K}
-  baseline-ngram-k${SPEC_K}
   fp8-eagle3-k${SPEC_K}
   fp8-draft-k${SPEC_K}
 )
@@ -68,7 +67,6 @@ CONFIG_FLAGS=(
   [fp8-full]="--quantization fp8 --kv-cache-dtype fp8"
   [baseline-eagle3-k${SPEC_K}]="--speculative-config {\"model\":\"$EAGLE_MODEL\",\"method\":\"$EAGLE_METHOD\",\"num_speculative_tokens\":$SPEC_K}"
   [baseline-draft-k${SPEC_K}]="--speculative-config {\"model\":\"$DRAFT_MODEL\",\"method\":\"draft_model\",\"num_speculative_tokens\":$SPEC_K}"
-  [baseline-ngram-k${SPEC_K}]="--speculative-config {\"method\":\"ngram\",\"num_speculative_tokens\":$SPEC_K,\"prompt_lookup_num_tokens\":$SPEC_K}"
   [fp8-eagle3-k${SPEC_K}]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$EAGLE_MODEL\",\"method\":\"$EAGLE_METHOD\",\"num_speculative_tokens\":$SPEC_K}"
   [fp8-draft-k${SPEC_K}]="--quantization fp8 --kv-cache-dtype fp8 --speculative-config {\"model\":\"$DRAFT_MODEL\",\"method\":\"draft_model\",\"num_speculative_tokens\":$SPEC_K}"
 )
@@ -115,14 +113,14 @@ wait_for_server() {
 }
 
 warmup_server() {
-  echo "Warming up server (10 requests at concurrency 2)..."
+  echo "Warming up server (50 requests at concurrency 32)..."
   guidellm benchmark run \
     --target "$BASE_URL" \
     --model "$MODEL" \
     --data "$DATA_CFG" \
     --profile concurrent \
-    --rate 2 \
-    --max-requests 10 \
+    --rate 32 \
+    --max-requests 50 \
     --random-seed "$RANDOM_SEED" \
     --disable-console \
     --outputs /dev/null 2>/dev/null || true
