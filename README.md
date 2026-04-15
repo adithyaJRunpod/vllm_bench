@@ -5,9 +5,10 @@ Benchmark scripts for vLLM on RunPod H100 GPUs.
 ## Pod Setup (fresh pod)
 
 ```bash
-# Install vLLM and GuideLLM
+# Install vLLM, GuideLLM, and lm-eval
 pip install vllm==0.18.0
 pip install guidellm==0.6.0
+pip install "lm-eval[api]"
 
 # Clone repo & fix line endings
 cd /workspace
@@ -26,8 +27,6 @@ export GUIDELLM_INPUT_STDEV=0
 export GUIDELLM_OUTPUT_STDEV=0
 export GUIDELLM_MAX_REQUESTS=200
 export GUIDELLM_SEED=42
-export VLLM_GPU_UTIL=0.95
-export VLLM_MAX_MODEL_LEN=8192
 bash scripts/run_guidellm_c_sweep.sh
 
 # 2. Config comparison (all 8 configs at chosen C)
@@ -39,8 +38,6 @@ export GUIDELLM_OUTPUT_STDEV=0
 export GUIDELLM_MAX_REQUESTS=500
 export GUIDELLM_SEED=42
 export NUM_RUNS=3
-export VLLM_GPU_UTIL=0.95
-export VLLM_MAX_MODEL_LEN=8192
 bash scripts/run_guidellm_config_compare.sh
 
 # 3. C × Config sweep (baseline vs fp8-full vs fp8-eagle3-k3)
@@ -52,8 +49,6 @@ export GUIDELLM_OUTPUT_STDEV=10
 export GUIDELLM_MAX_REQUESTS=500
 export GUIDELLM_SEED=42
 export NUM_RUNS=3
-export VLLM_GPU_UTIL=0.95
-export VLLM_MAX_MODEL_LEN=8192
 bash scripts/run_guidellm_c_config_sweep.sh
 
 # Parse results

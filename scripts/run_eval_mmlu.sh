@@ -85,7 +85,7 @@ run_eval() {
   local label="$1"
   echo "Running $TASKS eval for [$label]..."
   lm_eval \
-    --model local-completions \
+    --model local-chat-completions \
     --model_args "model=$MODEL,base_url=$BASE_URL/v1,num_concurrent=$NUM_CONCURRENT,tokenized_requests=False" \
     --tasks "$TASKS" \
     --apply_chat_template \
