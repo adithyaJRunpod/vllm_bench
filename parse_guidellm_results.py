@@ -158,14 +158,14 @@ def main():
     print(separator)
     print()
 
-    # --- Per-config averages (when multiple runs per config) ---
+    # --- Per-config median-of-runs (when multiple runs per config) ---
     configs_seen = []
     for r in results:
         if r["config"] not in configs_seen:
             configs_seen.append(r["config"])
 
     if len(configs_seen) > 1:
-        print("--- Per-config averages (across runs) ---")
+        print("--- Per-config medians (across runs) ---")
         print()
 
         print(separator)
@@ -175,20 +175,25 @@ def main():
         for config in configs_seen:
             runs = [r for r in results if r["config"] == config]
 
-            def avg(key):
-                vals = [r[key] for r in runs if r[key] is not None]
-                return sum(vals) / len(vals) if vals else None
+            def med(key):
+                vals = sorted(v for r in runs if (v := r[key]) is not None)
+                if not vals:
+                    return None
+                mid = len(vals) // 2
+                if len(vals) % 2 == 1:
+                    return vals[mid]
+                return (vals[mid - 1] + vals[mid]) / 2
 
-            e2el_ms = avg("latency_median_sec")
+            e2el_ms = med("latency_median_sec")
             if e2el_ms is not None:
                 e2el_ms *= 1000
 
             print(
                 f"{config:<{col_config}}"
-                f"{fmt_num(avg('req_per_sec'), 1):>{col}}"
-                f"{fmt_num(avg('output_tok_per_sec_mean')):>{col}}"
-                f"{fmt_num(avg('ttft_median_ms')):>{col}}"
-                f"{fmt_num(avg('itl_median_ms')):>{col}}"
+                f"{fmt_num(med('req_per_sec'), 1):>{col}}"
+                f"{fmt_num(med('output_tok_per_sec_mean')):>{col}}"
+                f"{fmt_num(med('ttft_median_ms')):>{col}}"
+                f"{fmt_num(med('itl_median_ms')):>{col}}"
                 f"{fmt_num(e2el_ms):>{col}}"
             )
 
