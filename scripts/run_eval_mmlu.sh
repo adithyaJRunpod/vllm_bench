@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ############################################
-# MMLU Eval: BF16 vs FP8
+# MMLU Eval: BF16 vs FP8 vs FP8+EAGLE3
 # Uses lm-eval's built-in vLLM backend
 # (no server needed).
 #
@@ -20,7 +20,7 @@ mkdir -p "$OUTDIR"
 
 COMMON_ARGS="pretrained=$MODEL,gpu_memory_utilization=$GPU_UTIL,max_model_len=$MAX_MODEL_LEN"
 
-echo "=== MMLU Eval: BF16 vs FP8 ==="
+echo "=== MMLU Eval: BF16 vs FP8 vs FP8+EAGLE3 ==="
 {
   echo "timestamp: $(date -Iseconds)"
   echo "model: $MODEL"
@@ -34,11 +34,11 @@ echo "=== MMLU Eval: BF16 vs FP8 ==="
 } | tee "$OUTDIR/environment.txt"
 echo ""
 
-# ── [1/2] Baseline (BF16) ───────────────────────────────
+# ── [1/3] Baseline (BF16) ───────────────────────────────
 
 echo ""
 echo "============================================"
-echo "  [1/2] Baseline (BF16)"
+echo "  [1/3] Baseline (BF16)"
 echo "============================================"
 
 lm_eval \
@@ -51,11 +51,11 @@ lm_eval \
 
 echo "Done → $OUTDIR/baseline"
 
-# ── [2/2] FP8 (weights + KV cache) ──────────────────────
+# ── [2/3] FP8 (weights + KV cache) ──────────────────────
 
 echo ""
 echo "============================================"
-echo "  [2/2] FP8 (weights + KV cache)"
+echo "  [2/3] FP8 (weights + KV cache)"
 echo "============================================"
 
 lm_eval \
@@ -67,6 +67,26 @@ lm_eval \
   2>&1 | tee "$OUTDIR/fp8_eval.log"
 
 echo "Done → $OUTDIR/fp8"
+
+# ── [3/3] FP8 + EAGLE3 speculative decoding ──────────────
+
+EAGLE3_MODEL="${EAGLE3_MODEL:-RedHatAI/Qwen3-8B-speculator.eagle3}"
+EAGLE3_K="${EAGLE3_K:-3}"
+
+echo ""
+echo "============================================"
+echo "  [3/3] FP8 + EAGLE3 (k=$EAGLE3_K)"
+echo "============================================"
+
+lm_eval \
+  --model vllm \
+  --model_args "$COMMON_ARGS,dtype=bfloat16,quantization=fp8,kv_cache_dtype=fp8,speculative_model=$EAGLE3_MODEL,num_speculative_tokens=$EAGLE3_K" \
+  --tasks "$TASKS" \
+  --batch_size "$BATCH_SIZE" \
+  --output_path "$OUTDIR/fp8_eagle3" \
+  2>&1 | tee "$OUTDIR/fp8_eagle3_eval.log"
+
+echo "Done → $OUTDIR/fp8_eagle3"
 
 # ── Summary ──────────────────────────────────────────────
 
@@ -80,6 +100,9 @@ tail -30 "$OUTDIR/baseline_eval.log" | grep -iE "mmlu|acc|Groups" || echo "(no r
 echo ""
 echo "--- FP8 ---"
 tail -30 "$OUTDIR/fp8_eval.log" | grep -iE "mmlu|acc|Groups" || echo "(no results found)"
+echo ""
+echo "--- FP8 + EAGLE3 ---"
+tail -30 "$OUTDIR/fp8_eagle3_eval.log" | grep -iE "mmlu|acc|Groups" || echo "(no results found)"
 echo ""
 echo "Full logs: $OUTDIR/"
 echo "Done. Compare accuracy scores above."
