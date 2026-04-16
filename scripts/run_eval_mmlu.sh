@@ -80,7 +80,7 @@ echo "============================================"
 echo "  [3/3] FP8 + EAGLE3 (k=$EAGLE3_K)"
 echo "============================================"
 
-python3 - "$OUTDIR" "$MODEL" "$GPU_UTIL" "$MAX_MODEL_LEN" "$TASKS" "$BATCH_SIZE" "$EAGLE3_MODEL" "$EAGLE3_K" <<'PYEOF'
+python3 - "$OUTDIR" "$MODEL" "$GPU_UTIL" "$MAX_MODEL_LEN" "$TASKS" "$BATCH_SIZE" "$EAGLE3_MODEL" "$EAGLE3_K" <<'PYEOF' 2>&1 | tee "$OUTDIR/fp8_eagle3_eval.log"
 import sys, json, os
 import lm_eval
 
@@ -110,12 +110,8 @@ os.makedirs(out_path, exist_ok=True)
 with open(os.path.join(out_path, "results.json"), "w") as f:
     json.dump(results["results"], f, indent=2, default=str)
 
-print("\n--- FP8 + EAGLE3 results ---")
-for task, metrics in sorted(results["results"].items()):
-    acc = metrics.get("acc,none", metrics.get("acc", "N/A"))
-    stderr = metrics.get("acc_stderr,none", "")
-    se_str = f" ± {stderr:.4f}" if isinstance(stderr, float) else ""
-    print(f"  {task:40s} acc = {acc:.4f}{se_str}" if isinstance(acc, float) else f"  {task}: {acc}")
+from lm_eval.utils import make_table
+print(make_table(results))
 PYEOF
 
 echo "Done → $OUTDIR/fp8_eagle3"
@@ -134,17 +130,7 @@ echo "--- FP8 ---"
 tail -30 "$OUTDIR/fp8_eval.log" | grep -iE "mmlu|acc|Groups" || echo "(no results found)"
 echo ""
 echo "--- FP8 + EAGLE3 ---"
-python3 -c "
-import json, os
-p = os.path.join('$OUTDIR', 'fp8_eagle3', 'results.json')
-if os.path.exists(p):
-    r = json.load(open(p))
-    for t, m in sorted(r.items()):
-        acc = m.get('acc,none', 'N/A')
-        print(f'  {t:40s} acc = {acc}')
-else:
-    print('(no results found)')
-"
+tail -30 "$OUTDIR/fp8_eagle3_eval.log" | grep -iE "mmlu|acc|Groups" || echo "(no results found)"
 echo ""
 echo "Full logs: $OUTDIR/"
 echo "Done. Compare accuracy scores above."
