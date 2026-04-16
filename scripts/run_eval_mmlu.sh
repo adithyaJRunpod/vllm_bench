@@ -69,6 +69,8 @@ lm_eval \
 echo "Done → $OUTDIR/fp8"
 
 # ── [3/3] FP8 + EAGLE3 speculative decoding ──────────────
+# lm-eval's --model_args can't pass speculative_config (dict with commas
+# breaks the comma-separated parser), so we call the Python API directly.
 
 EAGLE3_MODEL="${EAGLE3_MODEL:-RedHatAI/Qwen3-8B-speculator.eagle3}"
 EAGLE3_K="${EAGLE3_K:-3}"
@@ -78,13 +80,43 @@ echo "============================================"
 echo "  [3/3] FP8 + EAGLE3 (k=$EAGLE3_K)"
 echo "============================================"
 
-lm_eval \
-  --model vllm \
-  --model_args "$COMMON_ARGS,dtype=bfloat16,quantization=fp8,kv_cache_dtype=fp8,speculative_model=$EAGLE3_MODEL,num_speculative_tokens=$EAGLE3_K" \
-  --tasks "$TASKS" \
-  --batch_size "$BATCH_SIZE" \
-  --output_path "$OUTDIR/fp8_eagle3" \
-  2>&1 | tee "$OUTDIR/fp8_eagle3_eval.log"
+python3 - "$OUTDIR" "$MODEL" "$GPU_UTIL" "$MAX_MODEL_LEN" "$TASKS" "$BATCH_SIZE" "$EAGLE3_MODEL" "$EAGLE3_K" <<'PYEOF'
+import sys, json, os
+import lm_eval
+
+outdir, model, gpu_util, max_len, tasks, batch, eagle_model, eagle_k = sys.argv[1:9]
+
+results = lm_eval.simple_evaluate(
+    model="vllm",
+    model_args={
+        "pretrained": model,
+        "gpu_memory_utilization": float(gpu_util),
+        "max_model_len": int(max_len),
+        "dtype": "bfloat16",
+        "quantization": "fp8",
+        "kv_cache_dtype": "fp8",
+        "speculative_config": {
+            "model": eagle_model,
+            "method": "eagle3",
+            "num_speculative_tokens": int(eagle_k),
+        },
+    },
+    tasks=tasks.split(","),
+    batch_size=batch if batch == "auto" else int(batch),
+)
+
+out_path = os.path.join(outdir, "fp8_eagle3")
+os.makedirs(out_path, exist_ok=True)
+with open(os.path.join(out_path, "results.json"), "w") as f:
+    json.dump(results["results"], f, indent=2, default=str)
+
+print("\n--- FP8 + EAGLE3 results ---")
+for task, metrics in sorted(results["results"].items()):
+    acc = metrics.get("acc,none", metrics.get("acc", "N/A"))
+    stderr = metrics.get("acc_stderr,none", "")
+    se_str = f" ± {stderr:.4f}" if isinstance(stderr, float) else ""
+    print(f"  {task:40s} acc = {acc:.4f}{se_str}" if isinstance(acc, float) else f"  {task}: {acc}")
+PYEOF
 
 echo "Done → $OUTDIR/fp8_eagle3"
 
@@ -102,7 +134,17 @@ echo "--- FP8 ---"
 tail -30 "$OUTDIR/fp8_eval.log" | grep -iE "mmlu|acc|Groups" || echo "(no results found)"
 echo ""
 echo "--- FP8 + EAGLE3 ---"
-tail -30 "$OUTDIR/fp8_eagle3_eval.log" | grep -iE "mmlu|acc|Groups" || echo "(no results found)"
+python3 -c "
+import json, os
+p = os.path.join('$OUTDIR', 'fp8_eagle3', 'results.json')
+if os.path.exists(p):
+    r = json.load(open(p))
+    for t, m in sorted(r.items()):
+        acc = m.get('acc,none', 'N/A')
+        print(f'  {t:40s} acc = {acc}')
+else:
+    print('(no results found)')
+"
 echo ""
 echo "Full logs: $OUTDIR/"
 echo "Done. Compare accuracy scores above."
