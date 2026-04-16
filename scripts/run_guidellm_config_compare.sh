@@ -113,14 +113,14 @@ wait_for_server() {
 }
 
 warmup_server() {
-  echo "Warming up server (50 requests at concurrency 32)..."
+  echo "Warming up server (200 requests at concurrency 64)..."
   guidellm benchmark run \
     --target "$BASE_URL" \
     --model "$MODEL" \
     --data "$DATA_CFG" \
     --profile concurrent \
-    --rate 32 \
-    --max-requests 50 \
+    --rate 64 \
+    --max-requests 200 \
     --random-seed "$RANDOM_SEED" \
     --disable-console \
     --outputs /dev/null 2>/dev/null || true
