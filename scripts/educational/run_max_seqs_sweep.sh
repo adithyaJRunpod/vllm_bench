@@ -21,8 +21,9 @@ NUM_PROMPTS="${VLLM_NUM_PROMPTS:-512}"
 DTYPE="${VLLM_DTYPE:-auto}"
 GPU_UTIL="${VLLM_GPU_UTIL:-0.95}"
 MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-8192}"
+TP_SIZE="${VLLM_TP_SIZE:-1}"
 
-COMMON_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization $GPU_UTIL --max-model-len $MAX_MODEL_LEN"
+COMMON_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization $GPU_UTIL --max-model-len $MAX_MODEL_LEN --tensor-parallel-size $TP_SIZE --trust-remote-code"
 
 MAX_SEQS_VALUES=(4 16 32 64 128 256 512)
 

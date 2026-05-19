@@ -9,6 +9,7 @@ set -euo pipefail
 
 MODEL="${VLLM_MODEL:?Set VLLM_MODEL (e.g. export VLLM_MODEL=Qwen/Qwen3-8B)}"
 EAGLE_MODEL="${EAGLE_MODEL:-RedHatAI/Qwen3-8B-speculator.eagle3}"
+TP_SIZE="${VLLM_TP_SIZE:-1}"
 PROMPT="Explain how photosynthesis works in 3 paragraphs."
 MAX_TOKENS=256
 OUTDIR="logs/quality_check/$(date +%F_%H%M%S)"
@@ -64,6 +65,7 @@ echo "  [1/3] Baseline (BF16)"
 echo "============================================"
 stop_server
 nohup vllm serve "$MODEL" --host 0.0.0.0 --port 8000 \
+  --tensor-parallel-size "$TP_SIZE" --trust-remote-code \
   > "$OUTDIR/baseline_server.log" 2>&1 &
 wait_for_server
 query_model "baseline"
@@ -75,6 +77,7 @@ echo "  [2/3] FP8 (weights + KV cache)"
 echo "============================================"
 stop_server
 nohup vllm serve "$MODEL" --host 0.0.0.0 --port 8000 \
+  --tensor-parallel-size "$TP_SIZE" --trust-remote-code \
   --quantization fp8 --kv-cache-dtype fp8 \
   > "$OUTDIR/fp8_server.log" 2>&1 &
 wait_for_server
@@ -87,6 +90,7 @@ echo "  [3/3] FP8 + EAGLE3"
 echo "============================================"
 stop_server
 nohup vllm serve "$MODEL" --host 0.0.0.0 --port 8000 \
+  --tensor-parallel-size "$TP_SIZE" --trust-remote-code \
   --quantization fp8 --kv-cache-dtype fp8 \
   --speculative-config "{\"model\":\"$EAGLE_MODEL\",\"method\":\"eagle3\",\"num_speculative_tokens\":3}" \
   > "$OUTDIR/eagle3_server.log" 2>&1 &

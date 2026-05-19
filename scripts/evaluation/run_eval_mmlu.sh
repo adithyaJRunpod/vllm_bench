@@ -12,13 +12,14 @@ set -euo pipefail
 MODEL="${VLLM_MODEL:?Set VLLM_MODEL (e.g. export VLLM_MODEL=Qwen/Qwen3-8B)}"
 GPU_UTIL="${VLLM_GPU_UTIL:-0.95}"
 MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-8192}"
+TP_SIZE="${VLLM_TP_SIZE:-1}"
 TASKS="${EVAL_TASKS:-mmlu}"
 BATCH_SIZE="${EVAL_BATCH_SIZE:-auto}"
 
 OUTDIR="logs/eval/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
 
-COMMON_ARGS="pretrained=$MODEL,gpu_memory_utilization=$GPU_UTIL,max_model_len=$MAX_MODEL_LEN"
+COMMON_ARGS="pretrained=$MODEL,gpu_memory_utilization=$GPU_UTIL,max_model_len=$MAX_MODEL_LEN,tensor_parallel_size=$TP_SIZE,trust_remote_code=True"
 
 echo "=== MMLU Eval: BF16 vs FP8 vs FP8+EAGLE3 ==="
 {

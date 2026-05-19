@@ -127,7 +127,7 @@ def main():
 
     # --- Clean console table ---
     # Throughput: mean (aggregate server rate)
-    # Latency: median (typical per-request experience)
+    # Latency: p50 (typical) + p95 (tail) for TTFT, ITL, E2EL
     col_config = 30
     col = 12
 
@@ -135,9 +135,12 @@ def main():
         f"{'Config':<{col_config}}"
         f"{'Req/s':>{col}}"
         f"{'Out tok/s':>{col}}"
-        f"{'TTFT (ms)':>{col}}"
-        f"{'ITL (ms)':>{col}}"
-        f"{'E2EL (ms)':>{col}}"
+        f"{'TTFT p50':>{col}}"
+        f"{'TTFT p95':>{col}}"
+        f"{'ITL p50':>{col}}"
+        f"{'ITL p95':>{col}}"
+        f"{'E2EL p50':>{col}}"
+        f"{'E2EL p95':>{col}}"
     )
     separator = "-" * len(header)
     print(separator)
@@ -145,14 +148,18 @@ def main():
     print(separator)
 
     for r in results:
-        e2el_ms = r["latency_median_sec"] * 1000 if r["latency_median_sec"] else None
+        e2el_p50_ms = r["latency_median_sec"] * 1000 if r["latency_median_sec"] else None
+        e2el_p95_ms = r["latency_p95_sec"] * 1000 if r["latency_p95_sec"] else None
         print(
             f"{r['config']:<{col_config}}"
             f"{fmt_num(r['req_per_sec'], 1):>{col}}"
             f"{fmt_num(r['output_tok_per_sec_mean']):>{col}}"
             f"{fmt_num(r['ttft_median_ms']):>{col}}"
+            f"{fmt_num(r['ttft_p95_ms']):>{col}}"
             f"{fmt_num(r['itl_median_ms']):>{col}}"
-            f"{fmt_num(e2el_ms):>{col}}"
+            f"{fmt_num(r['itl_p95_ms']):>{col}}"
+            f"{fmt_num(e2el_p50_ms):>{col}}"
+            f"{fmt_num(e2el_p95_ms):>{col}}"
         )
 
     print(separator)
@@ -184,17 +191,23 @@ def main():
                     return vals[mid]
                 return (vals[mid - 1] + vals[mid]) / 2
 
-            e2el_ms = med("latency_median_sec")
-            if e2el_ms is not None:
-                e2el_ms *= 1000
+            e2el_p50_ms = med("latency_median_sec")
+            if e2el_p50_ms is not None:
+                e2el_p50_ms *= 1000
+            e2el_p95_ms = med("latency_p95_sec")
+            if e2el_p95_ms is not None:
+                e2el_p95_ms *= 1000
 
             print(
                 f"{config:<{col_config}}"
                 f"{fmt_num(med('req_per_sec'), 1):>{col}}"
                 f"{fmt_num(med('output_tok_per_sec_mean')):>{col}}"
                 f"{fmt_num(med('ttft_median_ms')):>{col}}"
+                f"{fmt_num(med('ttft_p95_ms')):>{col}}"
                 f"{fmt_num(med('itl_median_ms')):>{col}}"
-                f"{fmt_num(e2el_ms):>{col}}"
+                f"{fmt_num(med('itl_p95_ms')):>{col}}"
+                f"{fmt_num(e2el_p50_ms):>{col}}"
+                f"{fmt_num(e2el_p95_ms):>{col}}"
             )
 
         print(separator)
