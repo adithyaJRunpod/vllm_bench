@@ -34,7 +34,8 @@ GPU_UTIL="${VLLM_GPU_UTIL:-0.95}"
 MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-8192}"
 TP_SIZE="${VLLM_TP_SIZE:-1}"
 
-COMMON_SERVER_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization $GPU_UTIL --max-model-len $MAX_MODEL_LEN --tensor-parallel-size $TP_SIZE --trust-remote-code"
+DIST_BACKEND="${VLLM_DIST_BACKEND:-ray}"
+COMMON_SERVER_FLAGS="--host 0.0.0.0 --port 8000 --dtype $DTYPE --gpu-memory-utilization $GPU_UTIL --max-model-len $MAX_MODEL_LEN --tensor-parallel-size $TP_SIZE --trust-remote-code --distributed-executor-backend $DIST_BACKEND"
 BASE_URL="http://localhost:8000"
 
 DATA_CFG="prompt_tokens=$INPUT_TOKENS,output_tokens=$OUTPUT_TOKENS,source=$TEXT_SOURCE"
@@ -90,7 +91,7 @@ start_server() {
 }
 
 wait_for_server() {
-  local max_wait=360 elapsed=0
+  local max_wait="${VLLM_MAX_WAIT:-900}" elapsed=0
   echo "Waiting for server to be ready (max ${max_wait}s)..."
   while [ $elapsed -lt $max_wait ]; do
     if curl -s --max-time 2 "$BASE_URL/v1/models" >/dev/null 2>&1; then

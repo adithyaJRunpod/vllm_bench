@@ -25,7 +25,7 @@ stop_server() {
 }
 
 wait_for_server() {
-  local max_wait=180 elapsed=0
+  local max_wait="${VLLM_MAX_WAIT:-900}" elapsed=0
   echo "Waiting for server to be ready (max ${max_wait}s)..."
   while [ $elapsed -lt $max_wait ]; do
     if curl -s --max-time 2 http://localhost:8000/v1/models >/dev/null 2>&1; then
@@ -64,8 +64,10 @@ echo "============================================"
 echo "  [1/3] Baseline (BF16)"
 echo "============================================"
 stop_server
+DIST_BACKEND="${VLLM_DIST_BACKEND:-ray}"
 nohup vllm serve "$MODEL" --host 0.0.0.0 --port 8000 \
   --tensor-parallel-size "$TP_SIZE" --trust-remote-code \
+  --distributed-executor-backend "$DIST_BACKEND" \
   > "$OUTDIR/baseline_server.log" 2>&1 &
 wait_for_server
 query_model "baseline"
@@ -78,6 +80,7 @@ echo "============================================"
 stop_server
 nohup vllm serve "$MODEL" --host 0.0.0.0 --port 8000 \
   --tensor-parallel-size "$TP_SIZE" --trust-remote-code \
+  --distributed-executor-backend "$DIST_BACKEND" \
   --quantization fp8 --kv-cache-dtype fp8 \
   > "$OUTDIR/fp8_server.log" 2>&1 &
 wait_for_server
@@ -91,6 +94,7 @@ echo "============================================"
 stop_server
 nohup vllm serve "$MODEL" --host 0.0.0.0 --port 8000 \
   --tensor-parallel-size "$TP_SIZE" --trust-remote-code \
+  --distributed-executor-backend "$DIST_BACKEND" \
   --quantization fp8 --kv-cache-dtype fp8 \
   --speculative-config "{\"model\":\"$EAGLE_MODEL\",\"method\":\"eagle3\",\"num_speculative_tokens\":3}" \
   > "$OUTDIR/eagle3_server.log" 2>&1 &
