@@ -5,16 +5,22 @@ Benchmark scripts for vLLM on RunPod H100 GPUs.
 ## Pod Setup (fresh pod)
 
 ```bash
-# Install vLLM, GuideLLM, and lm-eval
-pip install vllm==0.18.0
-pip install guidellm==0.6.0
-pip install "lm-eval[api]"
-
 # Clone repo & fix line endings
 cd /workspace
 git clone https://github.com/adithyaJRunpod/vllm_bench.git
 cd vllm_bench
-sed -i 's/\r$//' scripts/*.sh
+find scripts -name '*.sh' -exec sed -i 's/\r$//' {} +
+
+# Install pinned deps (vLLM 0.21.0 — required for MiniMax M2.5 + DFlash)
+pip install -r requirements.txt
+
+# RunPod sets HF_HUB_ENABLE_HF_TRANSFER=1; hf_transfer in requirements.txt
+# satisfies that. To disable fast download instead: export HF_HUB_ENABLE_HF_TRANSFER=0
+
+# Pre-download large models (recommended for 200GB+ weights)
+# huggingface-cli login   # required for gated models (e.g. DFlash head)
+# huggingface-cli download MiniMaxAI/MiniMax-M2.5
+# huggingface-cli download z-lab/MiniMax-M2.5-DFlash
 
 # Set model
 export VLLM_MODEL=Qwen/Qwen3-8B

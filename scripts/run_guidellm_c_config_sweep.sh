@@ -111,6 +111,7 @@ warmup_server() {
   guidellm benchmark run \
     --target "$BASE_URL" \
     --model "$MODEL" \
+    --request-format "/v1/completions" \
     --data "$DATA_CFG" \
     --profile concurrent \
     --rate 64 \
@@ -131,6 +132,7 @@ run_bench() {
   guidellm benchmark run \
     --target "$BASE_URL" \
     --model "$MODEL" \
+    --request-format "/v1/completions" \
     --data "$DATA_CFG" \
     --profile concurrent \
     --rate "$conc" \
