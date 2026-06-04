@@ -1,0 +1,12 @@
+# Kimi K2.5 — Eagle3 k=3
+# Best config: +23% (1024/512), +43% (1024/2048) output tok/s
+# Requires 8 GPUs (~595GB model). Do NOT add quantization: fp8 (WNA16 Marlin MoE).
+
+model: moonshotai/Kimi-K2.5
+gpu-memory-utilization: 0.95
+max-model-len: 8192
+trust-remote-code: true
+mm-encoder-tp-mode: data
+tool-call-parser: kimi_k2
+reasoning-parser: kimi_k2
+speculative-config: '{"model":"lightseekorg/kimi-k2.5-eagle3-mla","method":"eagle3","num_speculative_tokens":3}'
