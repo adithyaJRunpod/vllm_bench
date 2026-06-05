@@ -139,6 +139,8 @@ def main():
         f"{'TTFT p95':>{col}}"
         f"{'ITL p50':>{col}}"
         f"{'ITL p95':>{col}}"
+        f"{'TPOT p50':>{col}}"
+        f"{'TPOT p95':>{col}}"
         f"{'E2EL p50':>{col}}"
         f"{'E2EL p95':>{col}}"
     )
@@ -158,6 +160,8 @@ def main():
             f"{fmt_num(r['ttft_p95_ms']):>{col}}"
             f"{fmt_num(r['itl_median_ms']):>{col}}"
             f"{fmt_num(r['itl_p95_ms']):>{col}}"
+            f"{fmt_num(r['tpot_median_ms']):>{col}}"
+            f"{fmt_num(r['tpot_p95_ms']):>{col}}"
             f"{fmt_num(e2el_p50_ms):>{col}}"
             f"{fmt_num(e2el_p95_ms):>{col}}"
         )
@@ -206,6 +210,8 @@ def main():
                 f"{fmt_num(med('ttft_p95_ms')):>{col}}"
                 f"{fmt_num(med('itl_median_ms')):>{col}}"
                 f"{fmt_num(med('itl_p95_ms')):>{col}}"
+                f"{fmt_num(med('tpot_median_ms')):>{col}}"
+                f"{fmt_num(med('tpot_p95_ms')):>{col}}"
                 f"{fmt_num(e2el_p50_ms):>{col}}"
                 f"{fmt_num(e2el_p95_ms):>{col}}"
             )
