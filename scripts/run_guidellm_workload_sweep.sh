@@ -24,7 +24,6 @@ set -euo pipefail
 #   prefill-heavy    1024in/256out    C=32  300 reqs
 #   decode-heavy     256in/1024out    C=32  300 reqs
 #   balanced-heavy   2000in/2000out   C=16  300 reqs
-#   long-generation  2000in/20000out  C=8   150 reqs
 #
 # Usage:
 #   RUNPOD_API_KEY=rpa_xxx \
@@ -57,7 +56,6 @@ WORKLOADS=(
   "prefill-heavy    1024    256   32   300"
   "decode-heavy      256   1024   32   300"
   "balanced-heavy   2000   2000   16   300"
-  "long-generation  2000  20000    8   150"
 )
 
 # ── helpers ──────────────────────────────────────────
