@@ -2,3 +2,6 @@ vllm==0.18.0
 guidellm==0.6.0
 lm-eval[api]
 hf_transfer
+runpod
+pyyaml
+requests

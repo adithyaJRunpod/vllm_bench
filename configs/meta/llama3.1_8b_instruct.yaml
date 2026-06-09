@@ -8,4 +8,4 @@ dtype: auto
 trust-remote-code: true
 quantization: fp8
 kv-cache-dtype: fp8
-speculative-config: '{"model":"RedHatAI/Llama-3.1-8B-speculator.eagle3","method":"eagle3","num_speculative_tokens":3}'
+speculative-config: '{"model":"RedHatAI/Llama-3.1-8B-Instruct-speculator.eagle3","method":"eagle3","num_speculative_tokens":3}'
