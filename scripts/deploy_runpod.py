@@ -28,7 +28,7 @@ import yaml
 
 
 RUNPOD_GRAPHQL_URL = "https://api.runpod.io/graphql"
-VLLM_WORKER_IMAGE = "runpod/worker-v1-vllm:v0.20.2"
+VLLM_WORKER_IMAGE = "runpod/worker-v1-vllm:v2.20.0"
 
 GPU_CHOICES = ["AMPERE_80", "ADA_80_PRO"]
 
