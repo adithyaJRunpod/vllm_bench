@@ -67,7 +67,7 @@ warmup_endpoint() {
     --model "$MODEL" \
     --request-format "$REQUEST_FORMAT" \
     --backend-args "$BACKEND_ARGS" \
-    --data "prompt_tokens=128,output_tokens=64,source=$TEXT_SOURCE" \
+    --data "prompt_tokens=128,output_tokens=64" \
     --profile concurrent \
     --rate 16 \
     --max-requests 30 \
