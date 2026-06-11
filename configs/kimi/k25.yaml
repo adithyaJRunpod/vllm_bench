@@ -1,7 +1,3 @@
-# Kimi K2.5 — Eagle3 k=3
-# Best config: +23% (1024/512), +43% (1024/2048) output tok/s
-# Requires 8 GPUs (~595GB model). Do NOT add quantization: fp8 (WNA16 Marlin MoE).
-
 model: moonshotai/Kimi-K2.5
 gpu-memory-utilization: 0.95
 max-model-len: 8192
