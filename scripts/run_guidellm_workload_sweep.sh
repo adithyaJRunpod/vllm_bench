@@ -18,6 +18,7 @@ set -euo pipefail
 #   RANDOM_SEED=42                              Reproducibility seed
 #   NUM_RUNS=2                                  Repeated runs per workload
 #   STDEV_PCT=10                                Stdev as % of token count
+#   WORKLOAD_FILTER=                              Run only this workload name
 #
 # Workloads (hardcoded, edit matrix below to customize):
 #   short-short      128in/128out     C=32  300 reqs
@@ -41,6 +42,7 @@ REQUEST_FORMAT="${REQUEST_FORMAT:-/v1/chat/completions}"
 RANDOM_SEED="${RANDOM_SEED:-42}"
 NUM_RUNS="${NUM_RUNS:-2}"
 STDEV_PCT="${STDEV_PCT:-10}"
+WORKLOAD_FILTER="${WORKLOAD_FILTER:-}"
 
 BASE_URL="https://api.runpod.ai/v2/${RUNPOD_ENDPOINT}/openai"
 BACKEND_ARGS="{\"api_key\": \"${RUNPOD_API_KEY}\", \"validate_backend\": false}"
@@ -140,6 +142,7 @@ warmup_endpoint
 RUN=0
 for entry in "${WORKLOADS[@]}"; do
   read -r wname winput woutput wconc wreqs <<< "$entry"
+  [[ -n "$WORKLOAD_FILTER" && "$wname" != "$WORKLOAD_FILTER" ]] && continue
   RUN=$((RUN + 1))
 
   echo ""
