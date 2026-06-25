@@ -128,14 +128,10 @@ echo "=== Endpoint Comparison ==="
 } | tee "$OUTDIR/environment.txt"
 echo ""
 
-# ── warmup both endpoints ────────────────────────────
+# ── warmup + benchmark endpoint A ─────────────────────
 
 warmup_endpoint "$LABEL_A" "$URL_A"
 echo ""
-warmup_endpoint "$LABEL_B" "$URL_B"
-echo ""
-
-# ── benchmark endpoint A ─────────────────────────────
 
 echo "============================================"
 echo "  Benchmarking: standard ($STANDARD_ENDPOINT)"
@@ -148,7 +144,10 @@ done
 
 echo ""
 
-# ── benchmark endpoint B ─────────────────────────────
+# ── warmup + benchmark endpoint B ─────────────────────
+
+warmup_endpoint "$LABEL_B" "$URL_B"
+echo ""
 
 echo "============================================"
 echo "  Benchmarking: overdrive ($OVERDRIVE_ENDPOINT)"
