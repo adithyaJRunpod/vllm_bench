@@ -10,6 +10,7 @@ Expects files named like: <label>_run<N>.json
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -142,29 +143,39 @@ def print_comparison(agg_a: dict, agg_b: dict, label_a: str, label_b: str,
         ("Errors",            "total_errored",           0, "",   "lower"),
     ]
 
+    lines = []
+    lines.append(sep)
+    lines.append(header)
+    lines.append(sep)
+
     for row in rows:
         if row[0] is None:
-            print(thin_sep)
+            lines.append(thin_sep)
             continue
 
         name, key, dec, suf, direction = row
-        a_val = agg_a[key]
-        b_val = agg_b[key]
+        a_val = agg_a.get(key)
+        b_val = agg_b.get(key)
 
         diff_str = multiplier(a_val, b_val, direction)
 
-        print(
+        lines.append(
             f"{name:<{col_metric}}"
             f"{fmt(a_val, dec, suf):>{col_val}}"
             f"{fmt(b_val, dec, suf):>{col_val}}"
             f"{diff_str:>{col_diff}}"
         )
 
-    print(sep)
-    print(f"\n  {label_a}: {runs_a} run(s)  |  {label_b}: {runs_b} run(s)")
+    lines.append(sep)
+    lines.append("")
+    lines.append(f"  {label_a}: {runs_a} run(s)  |  {label_b}: {runs_b} run(s)")
     if runs_a > 1 or runs_b > 1:
-        print("  Values are medians across runs.")
-    print("  Overdrive column: >1.0x = overdrive wins, <1.0x = standard wins")
+        lines.append("  Values are medians across runs.")
+    lines.append("  Overdrive column: >1.0x = overdrive wins, <1.0x = standard wins")
+
+    output = os.linesep.join(lines)
+    sys.stdout.write(output + os.linesep)
+    sys.stdout.flush()
 
 
 def main():
@@ -240,7 +251,8 @@ def main():
             b_str = f"{b_val}" if b_val is not None else ""
             f.write(f"{name},{a_str},{b_str},{diff}\n")
 
-    print(f"\n  CSV saved: {csv_path}")
+    sys.stdout.write(f"{os.linesep}  CSV saved: {csv_path}{os.linesep}")
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":
