@@ -117,10 +117,6 @@ def print_comparison(agg_a: dict, agg_b: dict, label_a: str, label_b: str,
     sep = "=" * len(header)
     thin_sep = "-" * len(header)
 
-    print(sep)
-    print(header)
-    print(sep)
-
     # higher-is-better metrics get normal diff, lower-is-better get inverted display
     rows = [
         ("Requests/sec",      "req_per_sec",           1, "",    "higher"),
