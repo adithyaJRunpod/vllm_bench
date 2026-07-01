@@ -197,9 +197,9 @@ async def chat_completions(request: ChatCompletionRequest):
         prompt = format_chat_prompt(messages, model_name)
 
         sampling_params = SamplingParams(
-            max_tokens=request.max_tokens,
-            temperature=request.temperature,
-            top_p=request.top_p,
+            max_tokens=request.max_tokens if request.max_tokens is not None else 512,
+            temperature=request.temperature if request.temperature is not None else 0.7,
+            top_p=request.top_p if request.top_p is not None else 0.9,
             stop=request.stop,
         )
 

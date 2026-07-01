@@ -1,8 +1,9 @@
 from typing import Optional, List, Union, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ChatMessage(BaseModel):
+    model_config = ConfigDict(extra="allow")
     role: Literal["system", "user", "assistant"]
     content: str
 
@@ -28,10 +29,11 @@ class GenerationResponse(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
     messages: List[ChatMessage]
-    max_tokens: int = Field(default=512, ge=1, le=4096)
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
-    top_p: float = Field(default=0.9, ge=0.0, le=1.0)
+    max_tokens: Optional[int] = Field(default=512)
+    temperature: Optional[float] = Field(default=0.7)
+    top_p: Optional[float] = Field(default=0.9)
     stop: Optional[Union[str, List[str]]] = None
     stream: bool = Field(default=False)
 
