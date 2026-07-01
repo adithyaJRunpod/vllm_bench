@@ -13,6 +13,7 @@ set -euo pipefail
 #   MODEL             Model ID as reported by /v1/models (e.g. qwen/qwen3-8b)
 #
 # Optional overrides (defaults shown):
+#   ENDPOINT_TYPE=queue                          "queue" or "lb" (load balancer)
 #   TEXT_SOURCE=data:prideandprejudice.txt.gz   GuideLLM text corpus
 #   REQUEST_FORMAT=/v1/chat/completions         API endpoint format
 #   RANDOM_SEED=42                              Reproducibility seed
@@ -27,9 +28,17 @@ set -euo pipefail
 #   balanced-heavy   2000in/2000out   C=16  300 reqs
 #
 # Usage:
+#   # Queue-based (default):
 #   RUNPOD_API_KEY=rpa_xxx \
 #   RUNPOD_ENDPOINT=nygvk2hd95hual \
 #   MODEL=qwen/qwen3-8b \
+#   bash scripts/run_guidellm_workload_sweep.sh
+#
+#   # Load balancer:
+#   RUNPOD_API_KEY=rpa_xxx \
+#   RUNPOD_ENDPOINT=jcja1rjzitd515 \
+#   MODEL=Qwen/Qwen3-8B \
+#   ENDPOINT_TYPE=lb \
 #   bash scripts/run_guidellm_workload_sweep.sh
 ############################################
 
@@ -43,9 +52,15 @@ RANDOM_SEED="${RANDOM_SEED:-42}"
 NUM_RUNS="${NUM_RUNS:-2}"
 STDEV_PCT="${STDEV_PCT:-10}"
 WORKLOAD_FILTER="${WORKLOAD_FILTER:-}"
+ENDPOINT_TYPE="${ENDPOINT_TYPE:-queue}"
 
-BASE_URL="https://api.runpod.ai/v2/${RUNPOD_ENDPOINT}/openai"
-BACKEND_ARGS="{\"api_key\": \"${RUNPOD_API_KEY}\", \"validate_backend\": false}"
+if [[ "$ENDPOINT_TYPE" == "lb" ]]; then
+  BASE_URL="https://${RUNPOD_ENDPOINT}.api.runpod.ai"
+  BACKEND_ARGS="{\"api_key\": \"${RUNPOD_API_KEY}\", \"validate_backend\": false}"
+else
+  BASE_URL="https://api.runpod.ai/v2/${RUNPOD_ENDPOINT}/openai"
+  BACKEND_ARGS="{\"api_key\": \"${RUNPOD_API_KEY}\", \"validate_backend\": false}"
+fi
 
 OUTDIR="logs/guidellm_workload_sweep/$(date +%F_%H%M%S)"
 mkdir -p "$OUTDIR"
