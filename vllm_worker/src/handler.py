@@ -40,24 +40,120 @@ engine: Optional[AsyncLLMEngine] = None
 engine_ready = False
 
 
+def _env_bool(key: str, default: str = "false") -> bool:
+    return os.getenv(key, default).lower() == "true"
+
+
+def _env_int(key: str, default=None):
+    val = os.getenv(key)
+    if val is None or val == "" or val == "0":
+        return default
+    return int(val)
+
+
+def _env_float(key: str, default=None):
+    val = os.getenv(key)
+    if val is None or val == "":
+        return default
+    return float(val)
+
+
+def _build_engine_kwargs() -> dict:
+    """Build AsyncEngineArgs kwargs from all supported environment variables."""
+    model_name = os.getenv("MODEL_NAME", "Qwen/Qwen3-8B")
+
+    kwargs = {
+        "model": model_name,
+        "tokenizer": os.getenv("TOKENIZER") or None,
+        "tokenizer_mode": os.getenv("TOKENIZER_MODE", "auto"),
+        "skip_tokenizer_init": _env_bool("SKIP_TOKENIZER_INIT"),
+        "trust_remote_code": _env_bool("TRUST_REMOTE_CODE", "true"),
+        "download_dir": os.getenv("DOWNLOAD_DIR") or None,
+        "load_format": os.getenv("LOAD_FORMAT", "auto"),
+        "dtype": os.getenv("DTYPE", "auto"),
+        "kv_cache_dtype": os.getenv("KV_CACHE_DTYPE", "auto"),
+        "seed": int(os.getenv("SEED", "0")),
+        "revision": os.getenv("MODEL_REVISION") or None,
+        "tensor_parallel_size": int(os.getenv("TENSOR_PARALLEL_SIZE", "1")),
+        "pipeline_parallel_size": int(os.getenv("PIPELINE_PARALLEL_SIZE", "1")),
+        "max_model_len": int(os.getenv("MAX_MODEL_LEN")) if os.getenv("MAX_MODEL_LEN") else None,
+        "max_num_batched_tokens": _env_int("MAX_NUM_BATCHED_TOKENS"),
+        "max_num_seqs": int(os.getenv("MAX_NUM_SEQS", "256")),
+        "max_logprobs": int(os.getenv("MAX_LOGPROBS", "20")),
+        "gpu_memory_utilization": float(os.getenv("GPU_MEMORY_UTILIZATION", "0.95")),
+        "swap_space": int(os.getenv("SWAP_SPACE", "4")),
+        "block_size": int(os.getenv("BLOCK_SIZE", "16")),
+        "enforce_eager": _env_bool("ENFORCE_EAGER"),
+        "max_seq_len_to_capture": int(os.getenv("MAX_SEQ_LEN_TO_CAPTURE", "8192")),
+        "enable_prefix_caching": _env_bool("ENABLE_PREFIX_CACHING"),
+        "disable_sliding_window": _env_bool("DISABLE_SLIDING_WINDOW"),
+        "disable_log_stats": _env_bool("DISABLE_LOG_STATS"),
+        "enable_chunked_prefill": _env_bool("ENABLE_CHUNKED_PREFILL"),
+        "scheduler_delay_factor": float(os.getenv("SCHEDULER_DELAY_FACTOR", "0.0")),
+    }
+
+    # Quantization
+    quant = os.getenv("QUANTIZATION")
+    if quant and quant.lower() not in ("none", ""):
+        kwargs["quantization"] = quant
+    quant_param_path = os.getenv("QUANTIZATION_PARAM_PATH")
+    if quant_param_path:
+        kwargs["quantization_param_path"] = quant_param_path
+
+    # Distributed executor backend
+    dist_backend = os.getenv("DISTRIBUTED_EXECUTOR_BACKEND")
+    if dist_backend and dist_backend.lower() not in ("none", ""):
+        kwargs["distributed_executor_backend"] = dist_backend
+
+    # Max parallel loading workers
+    max_plw = _env_int("MAX_PARALLEL_LOADING_WORKERS")
+    if max_plw:
+        kwargs["max_parallel_loading_workers"] = max_plw
+
+    # RoPE scaling
+    rope_scaling = os.getenv("ROPE_SCALING")
+    if rope_scaling:
+        kwargs["rope_scaling"] = json.loads(rope_scaling)
+    rope_theta = _env_float("ROPE_THETA")
+    if rope_theta is not None:
+        kwargs["rope_theta"] = rope_theta
+
+    # Speculative decoding via JSON config
+    spec_config = os.getenv("SPECULATIVE_CONFIG")
+    if spec_config:
+        kwargs["speculative_config"] = json.loads(spec_config)
+
+    # LoRA
+    if _env_bool("ENABLE_LORA"):
+        kwargs["enable_lora"] = True
+        kwargs["max_loras"] = int(os.getenv("MAX_LORAS", "1"))
+        kwargs["max_lora_rank"] = int(os.getenv("MAX_LORA_RANK", "16"))
+        kwargs["lora_dtype"] = os.getenv("LORA_DTYPE", "auto")
+        max_cpu_loras = _env_int("MAX_CPU_LORAS")
+        if max_cpu_loras:
+            kwargs["max_cpu_loras"] = max_cpu_loras
+        kwargs["fully_sharded_loras"] = _env_bool("FULLY_SHARDED_LORAS")
+
+    return kwargs
+
+
 async def create_engine():
-    """Initialize the vLLM engine"""
+    """Initialize the vLLM engine with all supported environment variables."""
     global engine, engine_ready
 
     try:
-        model_name = os.getenv("MODEL_NAME", "Qwen/Qwen3-8B")
+        kwargs = _build_engine_kwargs()
+        model_name = kwargs["model"]
 
-        engine_args = AsyncEngineArgs(
-            model=model_name,
-            tensor_parallel_size=int(os.getenv("TENSOR_PARALLEL_SIZE", "1")),
-            dtype=os.getenv("DTYPE", "auto"),
-            trust_remote_code=os.getenv("TRUST_REMOTE_CODE", "true").lower() == "true",
-            max_model_len=int(os.getenv("MAX_MODEL_LEN")) if os.getenv("MAX_MODEL_LEN") else None,
-            gpu_memory_utilization=float(os.getenv("GPU_MEMORY_UTILIZATION", "0.95")),
-            enforce_eager=os.getenv("ENFORCE_EAGER", "false").lower() == "true",
-            enable_prefix_caching=os.getenv("ENABLE_PREFIX_CACHING", "false").lower() == "true",
-        )
+        logger.info(f"Initializing vLLM engine with model: {model_name}")
+        logger.info(f"Engine config: dtype={kwargs.get('dtype')}, "
+                    f"kv_cache_dtype={kwargs.get('kv_cache_dtype')}, "
+                    f"quantization={kwargs.get('quantization', 'None')}, "
+                    f"tp={kwargs.get('tensor_parallel_size')}, "
+                    f"max_model_len={kwargs.get('max_model_len')}, "
+                    f"speculative={'yes' if kwargs.get('speculative_config') else 'no'}")
 
+        engine_args = AsyncEngineArgs(**kwargs)
         engine = AsyncLLMEngine.from_engine_args(engine_args)
         engine_ready = True
         logger.info(f"vLLM engine initialized successfully with model: {model_name}")
