@@ -114,9 +114,11 @@ async def send_streaming_request(client, url, headers, payload, results, semapho
                     if mode == "serverless":
                         choices = chunk.get("choices", [])
                         if not choices:
+                            if chunk.get("usage"):
+                                usage_tokens = chunk["usage"].get("completion_tokens")
                             continue
                         delta = choices[0].get("delta", {})
-                        content = delta.get("content")
+                        content = delta.get("content") or choices[0].get("text")
                         if content:
                             if ttft is None:
                                 ttft = now - start
