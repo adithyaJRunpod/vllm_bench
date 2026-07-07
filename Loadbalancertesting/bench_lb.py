@@ -276,6 +276,22 @@ async def run_benchmark(args):
             print(f"    P99:     {percentile(all_itls, 99):.1f}ms")
             print(f"    Max:     {max(all_itls):.1f}ms")
 
+        tpots = []
+        for r in successes:
+            if r["num_tokens"] > 1 and r["ttft_ms"] > 0:
+                decode_time_ms = (r["latency"] * 1000) - r["ttft_ms"]
+                tpot = decode_time_ms / (r["num_tokens"] - 1)
+                tpots.append(tpot)
+        if tpots:
+            print(f"\n  --- TPOT (Time Per Output Token) ---")
+            print(f"    Min:     {min(tpots):.2f}ms")
+            print(f"    Median:  {statistics.median(tpots):.2f}ms")
+            print(f"    Mean:    {statistics.mean(tpots):.2f}ms")
+            print(f"    P90:     {percentile(tpots, 90):.2f}ms")
+            print(f"    P95:     {percentile(tpots, 95):.2f}ms")
+            print(f"    P99:     {percentile(tpots, 99):.2f}ms")
+            print(f"    Max:     {max(tpots):.2f}ms")
+
         num_tokens = [r["num_tokens"] for r in successes]
         total_output_tokens = sum(num_tokens)
         token_source = "actual" if mode == "serverless" else "estimated (len/4)"
@@ -315,6 +331,9 @@ async def run_benchmark(args):
             if all_itls:
                 report["summary"]["itl_median_ms"] = statistics.median(all_itls)
                 report["summary"]["itl_p95_ms"] = percentile(all_itls, 95)
+            if tpots:
+                report["summary"]["tpot_median_ms"] = statistics.median(tpots)
+                report["summary"]["tpot_p95_ms"] = percentile(tpots, 95)
             report["summary"]["throughput_req_per_s"] = len(successes) / total_time
             report["summary"]["throughput_tok_per_s"] = total_output_tokens / total_time
 
