@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import uvicorn
+import inspect
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
@@ -81,15 +82,12 @@ def _build_engine_kwargs() -> dict:
         "max_num_seqs": int(os.getenv("MAX_NUM_SEQS", "256")),
         "max_logprobs": int(os.getenv("MAX_LOGPROBS", "20")),
         "gpu_memory_utilization": float(os.getenv("GPU_MEMORY_UTILIZATION", "0.95")),
-        "swap_space": int(os.getenv("SWAP_SPACE", "4")),
         "block_size": int(os.getenv("BLOCK_SIZE", "16")),
         "enforce_eager": _env_bool("ENFORCE_EAGER"),
-        "max_seq_len_to_capture": int(os.getenv("MAX_SEQ_LEN_TO_CAPTURE", "8192")),
         "enable_prefix_caching": _env_bool("ENABLE_PREFIX_CACHING"),
         "disable_sliding_window": _env_bool("DISABLE_SLIDING_WINDOW"),
         "disable_log_stats": _env_bool("DISABLE_LOG_STATS"),
         "enable_chunked_prefill": _env_bool("ENABLE_CHUNKED_PREFILL"),
-        "scheduler_delay_factor": float(os.getenv("SCHEDULER_DELAY_FACTOR", "0.0")),
     }
 
     # Quantization
@@ -153,7 +151,10 @@ async def create_engine():
                     f"max_model_len={kwargs.get('max_model_len')}, "
                     f"speculative={'yes' if kwargs.get('speculative_config') else 'no'}")
 
-        engine_args = AsyncEngineArgs(**kwargs)
+        engine_args = AsyncEngineArgs(
+            **{k: v for k, v in kwargs.items()
+               if k in inspect.signature(AsyncEngineArgs.__init__).parameters}
+        )
         engine = AsyncLLMEngine.from_engine_args(engine_args)
         engine_ready = True
         logger.info(f"vLLM engine initialized successfully with model: {model_name}")

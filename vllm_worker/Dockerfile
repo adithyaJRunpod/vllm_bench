@@ -7,4 +7,5 @@ COPY src /src
 
 WORKDIR /src
 
+ENTRYPOINT []
 CMD ["python3", "handler.py"]
