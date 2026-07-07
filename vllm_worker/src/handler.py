@@ -5,6 +5,7 @@ from typing import Optional, AsyncGenerator
 import json
 import logging
 import os
+import time
 import uvicorn
 import inspect
 from vllm import AsyncLLMEngine
@@ -261,13 +262,89 @@ async def generate_completion(request: GenerationRequest):
 
 
 async def stream_completion(prompt: str, sampling_params: SamplingParams, request_id: str) -> AsyncGenerator[str, None]:
-    """Stream completion generator"""
+    """Stream completion generator - OpenAI-compatible format"""
+    model_name = os.getenv("MODEL_NAME", "Qwen/Qwen3-8B")
+    prev_text = ""
     try:
         results = engine.generate(prompt, sampling_params, request_id)
         async for output in results:
             for output_item in output.outputs:
-                yield f"data: {json.dumps({'text': output_item.text, 'finish_reason': output_item.finish_reason})}\n\n"
+                new_text = output_item.text[len(prev_text):]
+                prev_text = output_item.text
+                if new_text:
+                    chunk = {
+                        "id": f"cmpl-{request_id}",
+                        "object": "text_completion",
+                        "created": int(time.time()),
+                        "model": model_name,
+                        "choices": [{
+                            "index": 0,
+                            "text": new_text,
+                            "logprobs": None,
+                            "finish_reason": output_item.finish_reason,
+                        }],
+                    }
+                    yield f"data: {json.dumps(chunk)}\n\n"
 
+        yield "data: [DONE]\n\n"
+
+    except Exception as e:
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+
+async def stream_chat_completion(prompt: str, sampling_params: SamplingParams, request_id: str) -> AsyncGenerator[str, None]:
+    """Stream chat completion generator - OpenAI-compatible format"""
+    model_name = os.getenv("MODEL_NAME", "Qwen/Qwen3-8B")
+    prev_text = ""
+    finish = "stop"
+
+    try:
+        initial_chunk = {
+            "id": f"chatcmpl-{request_id}",
+            "object": "chat.completion.chunk",
+            "created": int(time.time()),
+            "model": model_name,
+            "choices": [{
+                "index": 0,
+                "delta": {"role": "assistant", "content": ""},
+                "finish_reason": None,
+            }],
+        }
+        yield f"data: {json.dumps(initial_chunk)}\n\n"
+
+        results = engine.generate(prompt, sampling_params, request_id)
+        async for output in results:
+            for output_item in output.outputs:
+                new_text = output_item.text[len(prev_text):]
+                prev_text = output_item.text
+                if new_text:
+                    chunk = {
+                        "id": f"chatcmpl-{request_id}",
+                        "object": "chat.completion.chunk",
+                        "created": int(time.time()),
+                        "model": model_name,
+                        "choices": [{
+                            "index": 0,
+                            "delta": {"content": new_text},
+                            "finish_reason": None,
+                        }],
+                    }
+                    yield f"data: {json.dumps(chunk)}\n\n"
+                if output_item.finish_reason:
+                    finish = output_item.finish_reason
+
+        final_chunk = {
+            "id": f"chatcmpl-{request_id}",
+            "object": "chat.completion.chunk",
+            "created": int(time.time()),
+            "model": model_name,
+            "choices": [{
+                "index": 0,
+                "delta": {},
+                "finish_reason": finish,
+            }],
+        }
+        yield f"data: {json.dumps(final_chunk)}\n\n"
         yield "data: [DONE]\n\n"
 
     except Exception as e:
@@ -301,6 +378,13 @@ async def chat_completions(request: ChatCompletionRequest):
         )
 
         request_id = random_uuid()
+
+        if request.stream:
+            return StreamingResponse(
+                stream_chat_completion(prompt, sampling_params, request_id),
+                media_type="text/event-stream",
+            )
+
         results = engine.generate(prompt, sampling_params, request_id)
         final_output = None
         async for output in results:
