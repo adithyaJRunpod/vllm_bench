@@ -111,6 +111,7 @@ async def send_streaming_request(client, url, headers, payload, results, semapho
                 "ttft_ms": ttft * 1000 if ttft else 0,
                 "itl_ms": itl_values,
                 "num_chunks": len(chunks),
+                "num_tokens": max(1, len(total_text) // 4),
                 "output_len": len(total_text),
                 "finish_reason": finish_reason,
             })
@@ -223,12 +224,14 @@ async def run_benchmark(args):
             print(f"    P99:     {percentile(all_itls, 99):.1f}ms")
             print(f"    Max:     {max(all_itls):.1f}ms")
 
-        total_output_tokens = sum(num_chunks)
+        num_tokens = [r["num_tokens"] for r in successes]
+        total_output_tokens = sum(num_tokens)
         print(f"\n  --- Throughput ---")
         print(f"    Requests/s:         {len(successes) / total_time:.2f}")
         print(f"    Output tokens/s:    {total_output_tokens / total_time:.1f}")
-        print(f"    Avg tokens/request: {statistics.mean(num_chunks):.1f}")
+        print(f"    Avg tokens/request: {statistics.mean(num_tokens):.1f}")
         print(f"    Total output tokens:{total_output_tokens}")
+        print(f"    Avg chunks/request: {statistics.mean(num_chunks):.1f} (decode steps)")
 
     print(f"\n{separator}\n")
 
