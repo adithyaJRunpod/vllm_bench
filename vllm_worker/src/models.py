@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ChatMessage(BaseModel):
     model_config = ConfigDict(extra="allow")
     role: Literal["system", "user", "assistant"]
-    content: str
+    content: Union[str, List[dict]]
 
 
 class GenerationRequest(BaseModel):
