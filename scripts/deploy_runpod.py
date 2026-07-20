@@ -74,7 +74,7 @@ def yaml_to_env_vars(config: dict, hf_token: str | None = None) -> list[dict]:
         "reasoning-parser": "REASONING_PARSER",
     }
 
-    env = {}
+    env = {} 
     for key, value in config.items():
         env_key = key_map.get(key, key.upper().replace("-", "_"))
 
